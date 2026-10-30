@@ -127,7 +127,7 @@
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
-  "repository": "https://gitee.com/youlaiorg/vue3-element-admin.git",
-  "author": "有来开源组织",
+  "repository": "https://github.com/whoimicom/platform-workspace.git",
+  "author": "whoimi",
   "license": "MIT"
 }

@@ -46,7 +46,7 @@ const STOP_RECONNECT_CODES = new Set([1000, 1008, 1009, 4003, 4009]);
  * 将一次性票据写入 WebSocket 握手地址。
  */
 function createWebSocketUrl(ticket: string): string {
-  const address = new URL("/api/v1/realtime/ws", window.location.origin);
+  const address = new URL("/api/realtime/ws", window.location.origin);
   address.protocol = address.protocol === "https:" ? "wss:" : "ws:";
   address.searchParams.set("ticket", ticket);
   return address.toString();

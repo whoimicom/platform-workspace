@@ -26,8 +26,8 @@ const deptList: DeptRow[] = [
   {
     id: "1",
     parentId: "0",
-    name: "有来技术",
-    code: "YOULAI",
+    name: "whoimi",
+    code: "whoimi",
     sort: 1,
     status: 1,
     createTime: null,

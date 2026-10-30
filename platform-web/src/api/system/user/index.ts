@@ -13,7 +13,7 @@ import type {
 } from "./types";
 import type { ExcelResult, OptionItem, PageResult } from "@/api/common";
 
-const USER_BASE_URL = "/api/v1/users";
+const USER_BASE_URL = "/api/users";
 
 const UserAPI = {
   /**

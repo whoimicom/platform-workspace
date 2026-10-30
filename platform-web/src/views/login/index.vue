@@ -152,7 +152,7 @@
           </transition>
         </div>
 
-        <div class="login-footer">Copyright © 2021-2026 youlai.tech</div>
+        <div class="login-footer">Copyright © 2021-2026 whoimi.tech</div>
       </div>
     </div>
   </div>
@@ -186,7 +186,7 @@ const UserIcon = markRaw(User);
 const LockIcon = markRaw(Lock);
 
 const loginFormData = ref<LoginRequest>({
-  username: "youlai",
+  username: "whoimi",
   password: "123456",
   captchaId: "",
   captchaCode: "",

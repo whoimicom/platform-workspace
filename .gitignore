@@ -63,7 +63,7 @@ stats.html
 *.local
 .env.local
 .env.*.local
-.env.youlai
+.env.whoimi
 .eslintcache
 .stylelintcache
 package-lock.json

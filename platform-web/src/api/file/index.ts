@@ -7,7 +7,7 @@ const FileAPI = {
    */
   upload(formData: FormData, onProgress?: (percent: number) => void, signal?: AbortSignal) {
     return request<unknown, FileInfo>({
-      url: "/api/v1/files",
+      url: "/api/files",
       method: "post",
       data: formData,
       signal,
@@ -28,7 +28,7 @@ const FileAPI = {
     const formData = new FormData();
     formData.append("file", file);
     return request<unknown, FileInfo>({
-      url: "/api/v1/files",
+      url: "/api/files",
       method: "post",
       data: formData,
       headers: { "Content-Type": "multipart/form-data" },
@@ -40,7 +40,7 @@ const FileAPI = {
    */
   delete(filePath?: string) {
     return request({
-      url: "/api/v1/files",
+      url: "/api/files",
       method: "delete",
       params: { filePath },
     });

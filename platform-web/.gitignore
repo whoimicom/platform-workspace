@@ -43,4 +43,4 @@ deploy.mjs
 .deploy/
 
 # 线上部署专用变量，不入库
-.env.youlai
+.env.whoimi

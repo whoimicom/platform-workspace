@@ -1,7 +1,7 @@
 import request from "@/utils/request";
 import type { CaptchaInfo, LoginRequest, LoginResult } from "./types";
 
-const AUTH_BASE_URL = "/api/v1/auth";
+const AUTH_BASE_URL = "/api/auth";
 
 const AuthAPI = {
   /**

@@ -2,7 +2,7 @@ import request from "@/utils/request";
 import type { NoticeQuery, NoticeForm, NoticeItem, NoticeDetail } from "./types";
 import type { PageResult } from "@/api/common";
 
-const NOTICE_BASE_URL = "/api/v1/notices";
+const NOTICE_BASE_URL = "/api/notices";
 
 const NoticeAPI = {
   /**

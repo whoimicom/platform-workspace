@@ -14,31 +14,13 @@
         </div>
         <div class="dash-header__end">
           <a
-            href="https://github.com/youlaitech/vue3-element-admin"
+            href="https://github.com/whoimicom/platform-workspace"
             target="_blank"
             title="GitHub"
             class="quick-link"
           >
             <span class="i-svg:github" />
             <span>GitHub</span>
-          </a>
-          <a
-            href="https://gitee.com/youlaiorg/vue3-element-admin"
-            target="_blank"
-            title="Gitee"
-            class="quick-link"
-          >
-            <span class="i-svg:gitee" />
-            <span>Gitee</span>
-          </a>
-          <a
-            href="https://gitcode.com/youlai/vue3-element-admin"
-            target="_blank"
-            title="GitCode"
-            class="quick-link"
-          >
-            <span class="i-svg:gitcode" />
-            <span>GitCode</span>
           </a>
           <a
             href="https://juejin.cn/post/7228990409909108793"

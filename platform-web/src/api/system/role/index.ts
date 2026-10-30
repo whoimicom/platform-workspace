@@ -2,7 +2,7 @@ import request from "@/utils/request";
 import type { RoleQuery, RoleItem, RoleForm } from "./types";
 import type { OptionItem, PageResult } from "@/api/common";
 
-const ROLE_BASE_URL = "/api/v1/roles";
+const ROLE_BASE_URL = "/api/roles";
 
 const RoleAPI = {
   /**

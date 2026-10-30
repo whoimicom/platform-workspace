@@ -10,7 +10,7 @@ import type {
 } from "./types";
 import type { OptionItem, PageResult } from "@/api/common";
 
-const DICT_BASE_URL = "/api/v1/dicts";
+const DICT_BASE_URL = "/api/dicts";
 
 type DictTagType = DictItemForm["tagType"];
 

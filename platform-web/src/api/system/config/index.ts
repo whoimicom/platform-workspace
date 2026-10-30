@@ -2,7 +2,7 @@ import request from "@/utils/request";
 import type { ConfigQuery, ConfigForm, ConfigItem } from "./types";
 import type { PageResult } from "@/api/common";
 
-const CONFIG_BASE_URL = "/api/v1/configs";
+const CONFIG_BASE_URL = "/api/configs";
 
 const ConfigAPI = {
   /**

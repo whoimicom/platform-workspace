@@ -3,7 +3,7 @@ import type { MenuQuery, MenuItem, MenuForm, MenuAiResult, RouteItem } from "./t
 import type { OptionItem } from "@/api/common";
 import { MenuTypeEnum } from "@/enums";
 
-const MENU_BASE_URL = "/api/v1/menus";
+const MENU_BASE_URL = "/api/menus";
 
 const MenuAPI = {
   /**

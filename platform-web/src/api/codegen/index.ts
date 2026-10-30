@@ -2,7 +2,7 @@ import request from "@/utils/request";
 import type { GeneratorPreviewItem, TableQuery, TableItem, GenConfigForm } from "./types";
 import type { PageResult } from "@/api/common";
 
-const GENERATOR_BASE_URL = "/api/v1/codegen";
+const GENERATOR_BASE_URL = "/api/codegen";
 
 /**
  * 构建预览和下载接口的查询参数

@@ -7,7 +7,7 @@ import type {
   RealtimeTicketResponse,
 } from "@/utils/realtime/protocol";
 
-const REALTIME_BASE_URL = "/api/v1/realtime";
+const REALTIME_BASE_URL = "/api/realtime";
 
 const RealtimeAPI = {
   /**

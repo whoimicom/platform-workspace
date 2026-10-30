@@ -67,7 +67,7 @@ export const useUserStore = defineStore("user", () => {
       await doRefreshToken();
     };
     const task = navigator.locks
-      ? navigator.locks.request("youlai-auth-refresh", refresh)
+      ? navigator.locks.request("whoimi-auth-refresh", refresh)
       : refresh();
     const pending = task.finally(() => {
       // 旧会话的 finally 不能清除新会话已建立的续期任务。
