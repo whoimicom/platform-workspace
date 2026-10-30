@@ -7,8 +7,8 @@
 --      默认密码来自配置项 app.default-password（默认 123456）
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-USE admin;
+CREATE DATABASE IF NOT EXISTS platform DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE platform;
 
 -- ------------------------------------------------------------
 -- 部门

@@ -7,9 +7,9 @@ spring:
     name: platform-api
   datasource:
     # 优先读取环境变量，未设置时使用默认值
-    url: ${MYSQL_A_URL:jdbc:mysql://localhost:3306/admin?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
-    username: ${MYSQL_A_USERNAME:root}
-    password: ${MYSQL_A_PASSWORD:123456}
+    url: ${MYSQL_P_URL:jdbc:mysql://127.0.0.1:3306/platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${MYSQL_P_USERNAME:platform}
+    password: ${MYSQL_P_PASSWORD:platform123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
