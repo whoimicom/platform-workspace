@@ -147,8 +147,20 @@ html.sidebar-color-blue .el-menu--popup {
   }
 }
 
-html.dark .layout-root.layout--mix .layout-sidebar .el-menu,
-html.sidebar-color-blue .layout-root.layout--mix .layout-sidebar .el-menu {
+/* 侧边栏当前页菜单高亮：所有布局生效（浅色用 --menu-active-bg，深色/经典蓝用各自变量） */
+.layout-root .layout-sidebar .el-menu {
+  .el-menu-item.is-active {
+    color: var(--menu-active-text) !important;
+    background-color: var(--menu-active-bg) !important;
+
+    .menu-icon {
+      color: var(--menu-active-text) !important;
+    }
+  }
+}
+
+html.dark .layout-root .layout-sidebar .el-menu,
+html.sidebar-color-blue .layout-root .layout-sidebar .el-menu {
   .el-menu-item:hover,
   .el-sub-menu__title:hover {
     background-color: var(--menu-hover) !important;
