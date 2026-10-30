@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+stats.html
+
+# Local env files
+*.local
+.env.local
+.env.*.local
+
+# Editor directories and files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Lint cache
+.eslintcache
+.stylelintcache
+
+# Lock files (use pnpm)
+package-lock.json
+yarn.lock
+
+# Local history
+.history
+
+# 部署脚本（含服务器 IP/端口等信息，不入库）
+deploy.mjs
+
+# 独立 mock 服务的构建产物
+.deploy/
+
+# 线上部署专用变量，不入库
+.env.youlai
