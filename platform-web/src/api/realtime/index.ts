@@ -1,5 +1,4 @@
 import { isAxiosError } from "axios";
-import { ApiCodeEnum } from "@/enums/api";
 import request from "@/utils/request";
 import type {
   CreateRealtimeTicketRequest,
@@ -24,10 +23,8 @@ const RealtimeAPI = {
       });
     } catch (error) {
       if (
-        isAxiosError<{ code?: string }>(error) &&
-        (error.response?.status === 403 ||
-          (error.response?.status === 503 &&
-            error.response.data?.code === ApiCodeEnum.REALTIME_DISABLED))
+        isAxiosError(error) &&
+        (error.response?.status === 403 || error.response?.status === 503)
       ) {
         return null;
       }

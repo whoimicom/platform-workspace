@@ -1,8 +1,8 @@
 package com.platform.api.system.role;
 
-import com.platform.api.common.ApiResult;
+import com.platform.api.common.ResultInfo;
 import com.platform.api.common.OptionItem;
-import com.platform.api.common.PageResult;
+import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,63 +27,63 @@ public class RoleController {
 
     @GetMapping
     @PreAuthorize("@perm.has('sys:role:list')")
-    public ApiResult<PageResult<RoleDtos.RoleItem>> page(RoleDtos.RoleQuery query) {
-        return ApiResult.ok(roleService.page(query));
+    public ResultInfo<Page<RoleDtos.RoleItem>> page(RoleDtos.RoleQuery query) {
+        return ResultInfo.ok(roleService.page(query));
     }
 
     @GetMapping("/options")
-    public ApiResult<List<OptionItem>> options() {
-        return ApiResult.ok(roleService.options());
+    public ResultInfo<List<OptionItem>> options() {
+        return ResultInfo.ok(roleService.options());
     }
 
     @GetMapping("/code-options")
-    public ApiResult<List<OptionItem>> codeOptions() {
-        return ApiResult.ok(roleService.codeOptions());
+    public ResultInfo<List<OptionItem>> codeOptions() {
+        return ResultInfo.ok(roleService.codeOptions());
     }
 
     @GetMapping("/{roleId}/menu-ids")
     @PreAuthorize("@perm.has('sys:role:list')")
-    public ApiResult<List<String>> menuIds(@PathVariable Long roleId) {
-        return ApiResult.ok(roleService.menuIds(roleId));
+    public ResultInfo<List<String>> menuIds(@PathVariable Long roleId) {
+        return ResultInfo.ok(roleService.menuIds(roleId));
     }
 
     @PutMapping("/{roleId}/menus")
     @PreAuthorize("@perm.has('sys:role:assign')")
-    public ApiResult<Void> updateMenus(@PathVariable Long roleId, @RequestBody List<Long> menuIds) {
+    public ResultInfo<Void> updateMenus(@PathVariable Long roleId, @RequestBody List<Long> menuIds) {
         roleService.updateMenus(roleId, menuIds);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @GetMapping("/{roleId}/dept-ids")
     @PreAuthorize("@perm.has('sys:role:list')")
-    public ApiResult<List<String>> deptIds(@PathVariable Long roleId) {
-        return ApiResult.ok(roleService.deptIds(roleId));
+    public ResultInfo<List<String>> deptIds(@PathVariable Long roleId) {
+        return ResultInfo.ok(roleService.deptIds(roleId));
     }
 
     @GetMapping("/{id}/form")
     @PreAuthorize("@perm.has('sys:role:list')")
-    public ApiResult<RoleDtos.RoleForm> form(@PathVariable Long id) {
-        return ApiResult.ok(roleService.form(id));
+    public ResultInfo<RoleDtos.RoleForm> form(@PathVariable Long id) {
+        return ResultInfo.ok(roleService.form(id));
     }
 
     @PostMapping
     @PreAuthorize("@perm.has('sys:role:create')")
-    public ApiResult<Void> create(@RequestBody RoleDtos.RoleForm form) {
+    public ResultInfo<Void> create(@RequestBody RoleDtos.RoleForm form) {
         roleService.create(form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@perm.has('sys:role:update')")
-    public ApiResult<Void> update(@PathVariable Long id, @RequestBody RoleDtos.RoleForm form) {
+    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody RoleDtos.RoleForm form) {
         roleService.update(id, form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@perm.has('sys:role:delete')")
-    public ApiResult<Void> delete(@PathVariable String ids) {
+    public ResultInfo<Void> delete(@PathVariable String ids) {
         roleService.delete(ids);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 }

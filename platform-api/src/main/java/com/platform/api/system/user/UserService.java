@@ -4,7 +4,9 @@ import com.platform.api.common.BusinessException;
 import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
-import com.platform.api.common.PageResult;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import com.platform.api.config.AppProperties;
 import com.platform.api.security.LoginUser;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -64,7 +66,7 @@ public class UserService {
 
     public UserDtos.UserInfo me(LoginUser loginUser) {
         if (loginUser == null) {
-            throw BusinessException.unauthorized("A0230", "访问令牌无效或已过期");
+            throw BusinessException.unauthorized("访问令牌无效或已过期");
         }
         Long userId = loginUser.userId();
         SysUser user = userRepository.findById(userId)
@@ -101,7 +103,7 @@ public class UserService {
                 roles, roleNames, new ArrayList<>(perms), false);
     }
 
-    public PageResult<UserDtos.UserItem> page(UserDtos.UserQuery query) {
+    public Page<UserDtos.UserItem> page(UserDtos.UserQuery query) {
         StringBuilder where = new StringBuilder(" WHERE 1 = 1");
         Map<String, Object> params = new HashMap<>();
 
@@ -166,7 +168,7 @@ public class UserService {
                         JdbcUtil.getInt(rs, "status"),
                         rs.getString("username")));
 
-        return new PageResult<>(list, total);
+        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
     }
 
     public UserDtos.UserForm form(Long id) {

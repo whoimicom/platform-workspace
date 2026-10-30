@@ -1,7 +1,7 @@
 import { getCurrentScope, onScopeDispose, reactive, ref, shallowRef } from "vue";
 import type { Ref } from "vue";
 import { cloneDeep } from "lodash-es";
-import type { PageQuery, PageResult } from "@/api/common";
+import type { PageQuery, Page } from "@/api/common";
 
 /**
  * 分页查询只接收最近一次请求的结果；勾选与弹窗状态由页面持有。
@@ -28,8 +28,8 @@ export function usePageTable<T, Q extends PageQuery = PageQuery>(
     try {
       const data = await request(snapshot);
       if (sequence !== requestSequence) return;
-      list.value = data.list ?? [];
-      total.value = data.total ?? 0;
+      list.value = data.content ?? [];
+      total.value = data.totalElements ?? 0;
     } finally {
       // 旧请求结束时，不能提前关闭新请求的 loading。
       if (sequence === requestSequence) loading.value = false;
@@ -81,7 +81,7 @@ export interface UsePageTableOptions<T, Q extends PageQuery> {
   /**
    * 接收查询快照；请求异常由调用方处理。
    */
-  request: (params: Q) => Promise<PageResult<T>>;
+  request: (params: Q) => Promise<Page<T>>;
   /** 恢复参数前，同步重置页面自有的搜索控件。 */
   onBeforeReset?: () => void;
 }

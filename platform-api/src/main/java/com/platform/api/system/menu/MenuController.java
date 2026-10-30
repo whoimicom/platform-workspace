@@ -1,6 +1,6 @@
 package com.platform.api.system.menu;
 
-import com.platform.api.common.ApiResult;
+import com.platform.api.common.ResultInfo;
 import com.platform.api.common.OptionItem;
 import com.platform.api.security.LoginUser;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,45 +28,45 @@ public class MenuController {
     }
 
     @GetMapping("/routes")
-    public ApiResult<List<MenuDtos.RouteItem>> routes(@AuthenticationPrincipal LoginUser loginUser) {
-        return ApiResult.ok(menuService.routes(loginUser));
+    public ResultInfo<List<MenuDtos.RouteItem>> routes(@AuthenticationPrincipal LoginUser loginUser) {
+        return ResultInfo.ok(menuService.routes(loginUser));
     }
 
     @GetMapping
     @PreAuthorize("@perm.has('sys:menu:list')")
-    public ApiResult<List<MenuDtos.MenuItem>> tree(@RequestParam(required = false) String keywords) {
-        return ApiResult.ok(menuService.tree(keywords));
+    public ResultInfo<List<MenuDtos.MenuItem>> tree(@RequestParam(required = false) String keywords) {
+        return ResultInfo.ok(menuService.tree(keywords));
     }
 
     @GetMapping("/options")
-    public ApiResult<List<OptionItem>> options(@RequestParam(required = false) List<String> types) {
-        return ApiResult.ok(menuService.options(types));
+    public ResultInfo<List<OptionItem>> options(@RequestParam(required = false) List<String> types) {
+        return ResultInfo.ok(menuService.options(types));
     }
 
     @GetMapping("/{id}/form")
     @PreAuthorize("@perm.has('sys:menu:list')")
-    public ApiResult<MenuDtos.MenuForm> form(@PathVariable Long id) {
-        return ApiResult.ok(menuService.form(id));
+    public ResultInfo<MenuDtos.MenuForm> form(@PathVariable Long id) {
+        return ResultInfo.ok(menuService.form(id));
     }
 
     @PostMapping
     @PreAuthorize("@perm.has('sys:menu:create')")
-    public ApiResult<Void> create(@RequestBody MenuDtos.MenuForm form) {
+    public ResultInfo<Void> create(@RequestBody MenuDtos.MenuForm form) {
         menuService.create(form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@perm.has('sys:menu:update')")
-    public ApiResult<Void> update(@PathVariable Long id, @RequestBody MenuDtos.MenuForm form) {
+    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody MenuDtos.MenuForm form) {
         menuService.update(id, form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@perm.has('sys:menu:delete')")
-    public ApiResult<Void> delete(@PathVariable Long id) {
+    public ResultInfo<Void> delete(@PathVariable Long id) {
         menuService.delete(id);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 }

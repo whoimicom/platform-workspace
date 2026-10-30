@@ -1,6 +1,5 @@
 package com.platform.api.auth;
 
-import com.platform.api.common.ApiCode;
 import com.platform.api.common.BusinessException;
 import com.platform.api.system.user.SysUser;
 import com.platform.api.system.user.SysUserRepository;
@@ -44,28 +43,28 @@ public class AuthService {
 
     public AuthDtos.LoginResult refresh(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw BusinessException.unauthorized(ApiCode.REFRESH_TOKEN_INVALID, "刷新令牌无效或已过期");
+            throw BusinessException.unauthorized("刷新令牌无效或已过期");
         }
 
         Claims claims;
         try {
             claims = jwtService.parse(refreshToken);
         } catch (Exception ex) {
-            throw BusinessException.unauthorized(ApiCode.REFRESH_TOKEN_INVALID, "刷新令牌无效或已过期");
+            throw BusinessException.unauthorized("刷新令牌无效或已过期");
         }
         if (!JwtService.TYPE_REFRESH.equals(claims.get(JwtService.CLAIM_TYPE, String.class))) {
-            throw BusinessException.unauthorized(ApiCode.REFRESH_TOKEN_INVALID, "刷新令牌无效或已过期");
+            throw BusinessException.unauthorized("刷新令牌无效或已过期");
         }
 
         Long userId;
         try {
             userId = Long.valueOf(claims.getSubject());
         } catch (NumberFormatException ex) {
-            throw BusinessException.unauthorized(ApiCode.REFRESH_TOKEN_INVALID, "刷新令牌无效或已过期");
+            throw BusinessException.unauthorized("刷新令牌无效或已过期");
         }
 
         SysUser user = userRepository.findById(userId)
-                .orElseThrow(() -> BusinessException.unauthorized(ApiCode.REFRESH_TOKEN_INVALID, "用户不存在"));
+                .orElseThrow(() -> BusinessException.unauthorized("用户不存在"));
         ensureEnabled(user);
         return issueTokens(user);
     }

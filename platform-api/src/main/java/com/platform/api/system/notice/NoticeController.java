@@ -1,7 +1,7 @@
 package com.platform.api.system.notice;
 
-import com.platform.api.common.ApiResult;
-import com.platform.api.common.PageResult;
+import com.platform.api.common.ResultInfo;
+import org.springframework.data.domain.Page;
 import com.platform.api.security.LoginUser;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,74 +26,74 @@ public class NoticeController {
 
     @GetMapping
     @PreAuthorize("@perm.has('sys:notice:list')")
-    public ApiResult<PageResult<NoticeDtos.NoticeItem>> page(NoticeDtos.NoticeQuery query,
+    public ResultInfo<Page<NoticeDtos.NoticeItem>> page(NoticeDtos.NoticeQuery query,
                                                              @AuthenticationPrincipal LoginUser loginUser) {
-        return ApiResult.ok(noticeService.page(query, loginUser));
+        return ResultInfo.ok(noticeService.page(query, loginUser));
     }
 
     @GetMapping("/my")
-    public ApiResult<PageResult<NoticeDtos.NoticeItem>> myPage(NoticeDtos.NoticeQuery query,
+    public ResultInfo<Page<NoticeDtos.NoticeItem>> myPage(NoticeDtos.NoticeQuery query,
                                                                @AuthenticationPrincipal LoginUser loginUser) {
-        return ApiResult.ok(noticeService.myPage(query, loginUser));
+        return ResultInfo.ok(noticeService.myPage(query, loginUser));
     }
 
     @PutMapping("/read-all")
-    public ApiResult<Void> readAll(@AuthenticationPrincipal LoginUser loginUser) {
+    public ResultInfo<Void> readAll(@AuthenticationPrincipal LoginUser loginUser) {
         noticeService.readAll(loginUser);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @GetMapping("/{id}/preview")
     @PreAuthorize("@perm.has('sys:notice:list')")
-    public ApiResult<NoticeDtos.NoticeDetail> preview(@PathVariable Long id) {
-        return ApiResult.ok(noticeService.preview(id));
+    public ResultInfo<NoticeDtos.NoticeDetail> preview(@PathVariable Long id) {
+        return ResultInfo.ok(noticeService.preview(id));
     }
 
     @GetMapping("/{id}/form")
     @PreAuthorize("@perm.has('sys:notice:list')")
-    public ApiResult<NoticeDtos.NoticeForm> form(@PathVariable Long id) {
-        return ApiResult.ok(noticeService.form(id));
+    public ResultInfo<NoticeDtos.NoticeForm> form(@PathVariable Long id) {
+        return ResultInfo.ok(noticeService.form(id));
     }
 
     @GetMapping("/{id}/detail")
-    public ApiResult<NoticeDtos.NoticeDetail> detail(@PathVariable Long id,
+    public ResultInfo<NoticeDtos.NoticeDetail> detail(@PathVariable Long id,
                                                      @AuthenticationPrincipal LoginUser loginUser) {
-        return ApiResult.ok(noticeService.detail(id, loginUser, true));
+        return ResultInfo.ok(noticeService.detail(id, loginUser, true));
     }
 
     @PostMapping
     @PreAuthorize("@perm.has('sys:notice:create')")
-    public ApiResult<Void> create(@RequestBody NoticeDtos.NoticeForm form,
+    public ResultInfo<Void> create(@RequestBody NoticeDtos.NoticeForm form,
                                   @AuthenticationPrincipal LoginUser loginUser) {
         noticeService.create(form, loginUser);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@perm.has('sys:notice:update')")
-    public ApiResult<Void> update(@PathVariable Long id, @RequestBody NoticeDtos.NoticeForm form) {
+    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody NoticeDtos.NoticeForm form) {
         noticeService.update(id, form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@perm.has('sys:notice:delete')")
-    public ApiResult<Void> delete(@PathVariable String ids) {
+    public ResultInfo<Void> delete(@PathVariable String ids) {
         noticeService.delete(ids);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PutMapping("/{id}/publish")
     @PreAuthorize("@perm.has('sys:notice:publish')")
-    public ApiResult<Void> publish(@PathVariable Long id, @AuthenticationPrincipal LoginUser loginUser) {
+    public ResultInfo<Void> publish(@PathVariable Long id, @AuthenticationPrincipal LoginUser loginUser) {
         noticeService.publish(id, loginUser);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PutMapping("/{id}/revoke")
     @PreAuthorize("@perm.has('sys:notice:revoke')")
-    public ApiResult<Void> revoke(@PathVariable Long id) {
+    public ResultInfo<Void> revoke(@PathVariable Long id) {
         noticeService.revoke(id);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 }

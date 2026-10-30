@@ -1,6 +1,6 @@
 import request from "@/utils/request";
 import type { GeneratorPreviewItem, TableQuery, TableItem, GenConfigForm } from "./types";
-import type { PageResult } from "@/api/common";
+import type { Page } from "@/api/common";
 
 const GENERATOR_BASE_URL = "/api/codegen";
 
@@ -23,7 +23,7 @@ const GeneratorAPI = {
    * 获取数据表分页列表
    */
   getTablePage(params: TableQuery) {
-    return request<unknown, PageResult<TableItem>>({
+    return request<unknown, Page<TableItem>>({
       url: `${GENERATOR_BASE_URL}/table`,
       method: "get",
       params,

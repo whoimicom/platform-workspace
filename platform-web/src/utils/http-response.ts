@@ -1,12 +1,12 @@
 import type { AxiosResponse } from "axios";
-import type { ApiResult } from "@/api/common";
+import type { ResultInfo } from "@/api/common";
 
 /**
  * 读取文件接口返回的 JSON 业务结果，保留原始文件和响应头。
  */
 export async function readBinaryApiResult(
   response: AxiosResponse<unknown>
-): Promise<ApiResult | undefined> {
+): Promise<ResultInfo | undefined> {
   if (response.config.responseType !== "blob" && response.config.responseType !== "arraybuffer") {
     return undefined;
   }
@@ -36,17 +36,20 @@ export async function readBinaryApiResult(
   if (
     typeof value !== "object" ||
     value === null ||
-    !("code" in value) ||
-    typeof value.code !== "string" ||
-    !("msg" in value) ||
-    typeof value.msg !== "string"
+    !("success" in value) ||
+    typeof value.success !== "boolean" ||
+    !("resultCode" in value) ||
+    typeof value.resultCode !== "number" ||
+    !("resultMsg" in value) ||
+    typeof value.resultMsg !== "string"
   ) {
     return undefined;
   }
   return {
     ...value,
-    code: value.code,
-    msg: value.msg,
-    data: "data" in value ? value.data : undefined,
-  };
+    success: value.success,
+    resultCode: value.resultCode,
+    resultMsg: value.resultMsg,
+    resultBody: "resultBody" in value ? (value.resultBody as unknown) : undefined,
+  } as ResultInfo;
 }

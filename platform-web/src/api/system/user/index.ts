@@ -11,7 +11,7 @@ import type {
   MobileUpdateForm,
   EmailUpdateForm,
 } from "./types";
-import type { ExcelResult, OptionItem, PageResult } from "@/api/common";
+import type { ExcelResult, OptionItem, Page } from "@/api/common";
 
 const USER_BASE_URL = "/api/users";
 
@@ -30,7 +30,7 @@ const UserAPI = {
    * 获取用户分页列表
    */
   getPage(queryParams: UserQuery) {
-    return request<unknown, PageResult<UserItem>>({
+    return request<unknown, Page<UserItem>>({
       url: USER_BASE_URL,
       method: "get",
       params: queryParams,

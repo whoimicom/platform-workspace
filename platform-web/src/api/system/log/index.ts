@@ -6,7 +6,7 @@ import type {
   VisitTrendDetail,
   VisitOverviewDetail,
 } from "./types";
-import type { PageResult } from "@/api/common";
+import type { Page } from "@/api/common";
 
 const LOG_BASE_URL = "/api/logs";
 
@@ -15,7 +15,7 @@ const LogAPI = {
    * 获取日志分页列表
    */
   getPage(queryParams: LogQuery) {
-    return request<unknown, PageResult<LogItem>>({
+    return request<unknown, Page<LogItem>>({
       url: LOG_BASE_URL,
       method: "get",
       params: queryParams,

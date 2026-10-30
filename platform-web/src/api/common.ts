@@ -1,13 +1,19 @@
 /**
- * API 响应壳
+ * API 统一响应体，对齐后端 ResultInfo。
  */
-export interface ApiResult<T = unknown> {
-  /** 业务状态码 */
-  code: string;
+export interface ResultInfo<T = unknown> {
+  /** 是否成功，业务成功失败的唯一标准 */
+  success: boolean;
+  /** 业务状态码，成功为 200，失败为对应 HTTP 状态码 */
+  resultCode: number;
+  /** 失败描述 / 提示信息 */
+  resultMsg: string;
   /** 业务数据 */
-  data: T;
-  /** 业务消息 */
-  msg: string;
+  resultBody: T;
+  /** 链路 ID */
+  traceId?: string;
+  /** 服务端响应时间（毫秒） */
+  timestamp?: number;
 }
 
 /**
@@ -34,13 +40,27 @@ export type SortDirection = "asc" | "desc";
 export type SortExpression<TField extends string = string> = `${TField},${SortDirection}`;
 
 /**
- * 分页接口结果
+ * 分页接口结果，对齐 Spring Data Page 的 JSON 结构。
  */
-export interface PageResult<T> {
-  /** 数据列表 */
-  list: T[];
+export interface Page<T> {
+  /** 当前页数据 */
+  content: T[];
   /** 总记录数 */
-  total: number;
+  totalElements: number;
+  /** 总页数 */
+  totalPages: number;
+  /** 当前页码（从 0 开始） */
+  number: number;
+  /** 每页记录数 */
+  size: number;
+  /** 当前页记录数 */
+  numberOfElements: number;
+  /** 是否首页 */
+  first: boolean;
+  /** 是否末页 */
+  last: boolean;
+  /** 是否空页 */
+  empty: boolean;
 }
 
 /**

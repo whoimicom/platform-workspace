@@ -1,8 +1,8 @@
 package com.platform.api.system.user;
 
-import com.platform.api.common.ApiResult;
+import com.platform.api.common.ResultInfo;
 import com.platform.api.common.OptionItem;
-import com.platform.api.common.PageResult;
+import org.springframework.data.domain.Page;
 import com.platform.api.security.LoginUser;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,60 +30,60 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ApiResult<UserDtos.UserInfo> me(@AuthenticationPrincipal LoginUser loginUser) {
-        return ApiResult.ok(userService.me(loginUser));
+    public ResultInfo<UserDtos.UserInfo> me(@AuthenticationPrincipal LoginUser loginUser) {
+        return ResultInfo.ok(userService.me(loginUser));
     }
 
     @GetMapping
     @PreAuthorize("@perm.has('sys:user:list')")
-    public ApiResult<PageResult<UserDtos.UserItem>> page(UserDtos.UserQuery query) {
-        return ApiResult.ok(userService.page(query));
+    public ResultInfo<Page<UserDtos.UserItem>> page(UserDtos.UserQuery query) {
+        return ResultInfo.ok(userService.page(query));
     }
 
     @GetMapping("/options")
-    public ApiResult<List<OptionItem>> options() {
-        return ApiResult.ok(userService.options());
+    public ResultInfo<List<OptionItem>> options() {
+        return ResultInfo.ok(userService.options());
     }
 
     @GetMapping("/{id}/form")
     @PreAuthorize("@perm.has('sys:user:list')")
-    public ApiResult<UserDtos.UserForm> form(@PathVariable Long id) {
-        return ApiResult.ok(userService.form(id));
+    public ResultInfo<UserDtos.UserForm> form(@PathVariable Long id) {
+        return ResultInfo.ok(userService.form(id));
     }
 
     @PostMapping
     @PreAuthorize("@perm.has('sys:user:create')")
-    public ApiResult<Void> create(@RequestBody UserDtos.UserForm form) {
+    public ResultInfo<Void> create(@RequestBody UserDtos.UserForm form) {
         userService.create(form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@perm.has('sys:user:update')")
-    public ApiResult<Void> update(@PathVariable Long id, @RequestBody UserDtos.UserForm form) {
+    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody UserDtos.UserForm form) {
         userService.update(id, form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("@perm.has('sys:user:update')")
-    public ApiResult<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+    public ResultInfo<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
         userService.updateStatus(id, status);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PutMapping("/{id}/password/reset")
     @PreAuthorize("@perm.has('sys:user:reset-password')")
-    public ApiResult<Void> resetPassword(@PathVariable Long id,
+    public ResultInfo<Void> resetPassword(@PathVariable Long id,
                                          @RequestBody UserDtos.PasswordResetRequest request) {
         userService.resetPassword(id, request.password());
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@perm.has('sys:user:delete')")
-    public ApiResult<Void> delete(@PathVariable String ids) {
+    public ResultInfo<Void> delete(@PathVariable String ids) {
         userService.delete(ids);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 }

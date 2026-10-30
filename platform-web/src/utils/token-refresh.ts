@@ -5,11 +5,10 @@ import {
   type InternalAxiosRequestConfig,
 } from "axios";
 
-import { ApiCodeEnum } from "@/enums/api";
 import { useUserStoreHook } from "@/stores/user";
 import { AuthStorage, authSessionRevision } from "@/utils/auth";
 import { readBinaryApiResult } from "@/utils/http-response";
-import type { ApiResult } from "@/api/common";
+import type { ResultInfo } from "@/api/common";
 
 // 携带续期重试标记，mergeConfig 会把它带进重试后的新 config
 type RetryRequestConfig = InternalAxiosRequestConfig & { isRetried?: boolean };
@@ -38,7 +37,7 @@ export function installTokenRefresh(http: AxiosInstance) {
     return config;
   });
 
-  http.interceptors.response.use(undefined, async (error: AxiosError<ApiResult>) => {
+  http.interceptors.response.use(undefined, async (error: AxiosError<ResultInfo>) => {
     const { config, response } = error;
 
     // 网络错误交回基础拦截器提示
@@ -71,9 +70,8 @@ export function installTokenRefresh(http: AxiosInstance) {
     // 匿名登录和续期的失败由调用者处理，不影响当前会话。
     if (config?.anonymous) return Promise.reject(error);
 
-    const { code } = response.data ?? {};
-    // Token 过期
-    if (code === ApiCodeEnum.ACCESS_TOKEN_INVALID) {
+    // Token 过期：HTTP 401 统一视为访问令牌失效
+    if (response.status === 401) {
       const retryConfig = config as RetryRequestConfig | undefined;
       const userStore = useUserStoreHook();
 
@@ -116,12 +114,6 @@ export function installTokenRefresh(http: AxiosInstance) {
         await userStore.redirectToLogin();
         return Promise.reject(new Error("Token refresh failed"));
       }
-    }
-
-    // Refresh token 失效
-    if (code === ApiCodeEnum.REFRESH_TOKEN_INVALID) {
-      await useUserStoreHook().redirectToLogin();
-      return Promise.reject(new Error("Token Invalid"));
     }
 
     // 其它错误交回基础拦截器处理

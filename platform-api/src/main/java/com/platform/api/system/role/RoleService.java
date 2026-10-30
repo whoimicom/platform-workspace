@@ -4,7 +4,9 @@ import com.platform.api.common.BusinessException;
 import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
-import com.platform.api.common.PageResult;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -35,7 +37,7 @@ public class RoleService {
         this.jdbc = jdbc;
     }
 
-    public PageResult<RoleDtos.RoleItem> page(RoleDtos.RoleQuery query) {
+    public Page<RoleDtos.RoleItem> page(RoleDtos.RoleQuery query) {
         StringBuilder where = new StringBuilder(" WHERE 1 = 1");
         Map<String, Object> params = new HashMap<>();
         if (query.getKeywords() != null && !query.getKeywords().isBlank()) {
@@ -68,7 +70,7 @@ public class RoleService {
                             rs.getString("update_time"));
                 });
 
-        return new PageResult<>(list, total);
+        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
     }
 
     public List<OptionItem> options() {

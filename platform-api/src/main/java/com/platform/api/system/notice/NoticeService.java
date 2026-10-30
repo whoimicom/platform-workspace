@@ -3,7 +3,9 @@ package com.platform.api.system.notice;
 import com.platform.api.common.BusinessException;
 import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
-import com.platform.api.common.PageResult;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import com.platform.api.security.LoginUser;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -57,7 +59,7 @@ public class NoticeService {
     /**
      * 管理端分页。
      */
-    public PageResult<NoticeDtos.NoticeItem> page(NoticeDtos.NoticeQuery query, LoginUser loginUser) {
+    public Page<NoticeDtos.NoticeItem> page(NoticeDtos.NoticeQuery query, LoginUser loginUser) {
         StringBuilder where = new StringBuilder(" WHERE 1 = 1");
         Map<String, Object> params = new HashMap<>();
         params.put("userId", currentUserId(loginUser));
@@ -71,18 +73,20 @@ public class NoticeService {
         }
 
         long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_notice n" + where, params, Long.class);
-        applyPage(params, query.getPageNum(), query.getPageSize());
+        int pageNum = query.getPageNum() == null ? 1 : Math.max(1, query.getPageNum());
+        int pageSize = query.getPageSize() == null ? 10 : Math.min(100, Math.max(1, query.getPageSize()));
+        applyPage(params, pageNum, pageSize);
 
         List<NoticeDtos.NoticeItem> list = jdbc.query(
                 DETAIL_SELECT + where + " ORDER BY n.create_time DESC, n.id DESC LIMIT :limit OFFSET :offset",
                 params, this::mapItem);
-        return new PageResult<>(list, total);
+        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
     }
 
     /**
      * 我的通知分页：仅已发布且对当前用户可见的通知。
      */
-    public PageResult<NoticeDtos.NoticeItem> myPage(NoticeDtos.NoticeQuery query, LoginUser loginUser) {
+    public Page<NoticeDtos.NoticeItem> myPage(NoticeDtos.NoticeQuery query, LoginUser loginUser) {
         StringBuilder where = new StringBuilder(visibleWhere());
         Map<String, Object> params = new HashMap<>();
         params.put("userId", currentUserId(loginUser));
@@ -100,12 +104,14 @@ public class NoticeService {
         }
 
         long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_notice n" + where, params, Long.class);
-        applyPage(params, query.getPageNum(), query.getPageSize());
+        int pageNum = query.getPageNum() == null ? 1 : Math.max(1, query.getPageNum());
+        int pageSize = query.getPageSize() == null ? 10 : Math.min(100, Math.max(1, query.getPageSize()));
+        applyPage(params, pageNum, pageSize);
 
         List<NoticeDtos.NoticeItem> list = jdbc.query(
                 DETAIL_SELECT + where + " ORDER BY n.publish_time DESC, n.id DESC LIMIT :limit OFFSET :offset",
                 params, this::mapItem);
-        return new PageResult<>(list, total);
+        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
     }
 
     public NoticeDtos.NoticeForm form(Long id) {
@@ -377,7 +383,7 @@ public class NoticeService {
 
     private long currentUserId(LoginUser loginUser) {
         if (loginUser == null || loginUser.userId() == null) {
-            throw BusinessException.unauthorized("A0230", "访问令牌无效或已过期");
+            throw BusinessException.unauthorized("访问令牌无效或已过期");
         }
         return loginUser.userId();
     }

@@ -4,7 +4,9 @@ import com.platform.api.common.BusinessException;
 import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
-import com.platform.api.common.PageResult;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -26,7 +28,7 @@ public class DictService {
         this.jdbc = jdbc;
     }
 
-    public PageResult<DictDtos.DictTypeItem> typePage(DictDtos.DictTypeQuery query) {
+    public Page<DictDtos.DictTypeItem> typePage(DictDtos.DictTypeQuery query) {
         StringBuilder where = new StringBuilder(" WHERE 1 = 1");
         Map<String, Object> params = new HashMap<>();
         if (query.getKeywords() != null && !query.getKeywords().isBlank()) {
@@ -54,7 +56,7 @@ public class DictService {
                         rs.getString("dict_code"),
                         JdbcUtil.getInt(rs, "status")));
 
-        return new PageResult<>(list, total);
+        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
     }
 
     public List<OptionItem> typeOptions() {
@@ -129,7 +131,7 @@ public class DictService {
         jdbc.update("DELETE FROM sys_dict WHERE id IN (:ids)", Map.of("ids", idList));
     }
 
-    public PageResult<DictDtos.DictItem> itemPage(String dictCode, DictDtos.DictItemQuery query) {
+    public Page<DictDtos.DictItem> itemPage(String dictCode, DictDtos.DictItemQuery query) {
         StringBuilder where = new StringBuilder(" WHERE dict_code = :dictCode");
         Map<String, Object> params = new HashMap<>();
         params.put("dictCode", dictCode);
@@ -157,7 +159,7 @@ public class DictService {
                         JdbcUtil.getInt(rs, "sort"),
                         rs.getString("tag_type")));
 
-        return new PageResult<>(list, total);
+        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
     }
 
     public List<DictDtos.DictItemOption> itemOptions(String dictCode) {

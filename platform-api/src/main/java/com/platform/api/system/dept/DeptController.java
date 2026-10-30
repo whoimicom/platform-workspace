@@ -1,6 +1,6 @@
 package com.platform.api.system.dept;
 
-import com.platform.api.common.ApiResult;
+import com.platform.api.common.ResultInfo;
 import com.platform.api.common.OptionItem;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,40 +27,40 @@ public class DeptController {
 
     @GetMapping
     @PreAuthorize("@perm.has('sys:dept:list')")
-    public ApiResult<List<DeptDtos.DeptItem>> tree(@RequestParam(required = false) String keywords,
+    public ResultInfo<List<DeptDtos.DeptItem>> tree(@RequestParam(required = false) String keywords,
                                                    @RequestParam(required = false) Integer status) {
-        return ApiResult.ok(deptService.tree(keywords, status));
+        return ResultInfo.ok(deptService.tree(keywords, status));
     }
 
     @GetMapping("/options")
-    public ApiResult<List<OptionItem>> options() {
-        return ApiResult.ok(deptService.options());
+    public ResultInfo<List<OptionItem>> options() {
+        return ResultInfo.ok(deptService.options());
     }
 
     @GetMapping("/{id}/form")
     @PreAuthorize("@perm.has('sys:dept:list')")
-    public ApiResult<DeptDtos.DeptForm> form(@PathVariable Long id) {
-        return ApiResult.ok(deptService.form(id));
+    public ResultInfo<DeptDtos.DeptForm> form(@PathVariable Long id) {
+        return ResultInfo.ok(deptService.form(id));
     }
 
     @PostMapping
     @PreAuthorize("@perm.has('sys:dept:create')")
-    public ApiResult<Void> create(@RequestBody DeptDtos.DeptForm form) {
+    public ResultInfo<Void> create(@RequestBody DeptDtos.DeptForm form) {
         deptService.create(form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@perm.has('sys:dept:update')")
-    public ApiResult<Void> update(@PathVariable Long id, @RequestBody DeptDtos.DeptForm form) {
+    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody DeptDtos.DeptForm form) {
         deptService.update(id, form);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@perm.has('sys:dept:delete')")
-    public ApiResult<Void> delete(@PathVariable String ids) {
+    public ResultInfo<Void> delete(@PathVariable String ids) {
         deptService.delete(ids);
-        return ApiResult.ok();
+        return ResultInfo.ok();
     }
 }

@@ -1,6 +1,6 @@
 package com.platform.api.auth;
 
-import com.platform.api.common.ApiResult;
+import com.platform.api.common.ResultInfo;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,22 +22,22 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResult<AuthDtos.LoginResult> login(@RequestBody AuthDtos.LoginRequest request) {
-        return ApiResult.ok(authService.login(request));
+    public ResultInfo<AuthDtos.LoginResult> login(@RequestBody AuthDtos.LoginRequest request) {
+        return ResultInfo.ok(authService.login(request));
     }
 
     @GetMapping("/captcha")
-    public ApiResult<AuthDtos.CaptchaInfo> captcha() {
-        return ApiResult.ok(captchaService.create());
+    public ResultInfo<AuthDtos.CaptchaInfo> captcha() {
+        return ResultInfo.ok(captchaService.create());
     }
 
     @PostMapping("/refresh-token")
-    public ApiResult<AuthDtos.LoginResult> refreshToken(@RequestParam(required = false) String refreshToken) {
-        return ApiResult.ok(authService.refresh(refreshToken));
+    public ResultInfo<AuthDtos.LoginResult> refreshToken(@RequestParam(required = false) String refreshToken) {
+        return ResultInfo.ok(authService.refresh(refreshToken));
     }
 
     @DeleteMapping("/logout")
-    public ApiResult<Void> logout() {
-        return ApiResult.ok();
+    public ResultInfo<Void> logout() {
+        return ResultInfo.ok();
     }
 }

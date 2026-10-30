@@ -90,7 +90,6 @@
 <script lang="ts" setup>
 import { ElMessage, type UploadUserFile } from "element-plus";
 import UserAPI from "@/api/system/user";
-import { ApiCodeEnum } from "@/enums/api";
 import { downloadFile } from "@/utils/download";
 
 /**
@@ -164,7 +163,7 @@ async function handleUpload(): Promise<void> {
   }
 
   const result = await UserAPI.import(importFormData.files[0].raw as File);
-  if (result.code === ApiCodeEnum.SUCCESS && result.invalidCount === 0) {
+  if (result.invalidCount === 0) {
     ElMessage.success("导入成功，导入数据：" + result.validCount + "条");
     emit("import-success");
     closeDialog();

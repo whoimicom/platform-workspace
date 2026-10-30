@@ -68,7 +68,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (Exception ex) {
-            // 令牌无效或过期时保持匿名状态，由 EntryPoint 返回 A0230
+            // 令牌无效或过期时保持匿名状态，由 EntryPoint 返回 401
             SecurityContextHolder.clearContext();
         }
     }

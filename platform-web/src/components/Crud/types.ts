@@ -4,7 +4,7 @@ import type CrudTable from "./CrudTable.vue";
 import type CrudForm from "./CrudForm.vue";
 import type CrudSearch from "./CrudSearch.vue";
 import type { CSSProperties, Ref } from "vue";
-import type { PageResult } from "@/api/common";
+import type { Page } from "@/api/common";
 import type { AxiosResponse } from "axios";
 
 /**
@@ -129,7 +129,7 @@ export interface CrudTableConfig<TQuery = CrudRecord, TItem = CrudRecord> {
         >
       >;
   /** 返回分页结果或数组，其他接口结构在此转换 */
-  fetchData(queryParams: TQuery): Promise<PageResult<TItem> | TItem[]>;
+  fetchData(queryParams: TQuery): Promise<Page<TItem> | TItem[]>;
   /** 分页参数名，默认 pageNum、pageSize */
   paginationKeys?: {
     page: string;
