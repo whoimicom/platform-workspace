@@ -143,6 +143,36 @@ CREATE TABLE IF NOT EXISTS sys_dict_item (
     UNIQUE KEY uk_sys_dict_item (dict_code, value)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '字典项表';
 
+-- ------------------------------------------------------------
+-- 通知公告 / 阅读记录
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sys_notice (
+    id              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '通知ID',
+    title           VARCHAR(200) NOT NULL COMMENT '通知标题',
+    content         TEXT         NOT NULL COMMENT '通知内容(富文本)',
+    type            INT          NOT NULL DEFAULT 1 COMMENT '通知类型',
+    level           VARCHAR(16)  NOT NULL DEFAULT 'L' COMMENT '通知等级',
+    publish_status  TINYINT      NOT NULL DEFAULT 0 COMMENT '发布状态(0:草稿;1:已发布;-1:已撤回)',
+    target_type     TINYINT      NOT NULL DEFAULT 1 COMMENT '目标类型(1:全体;2:指定用户)',
+    target_user_ids VARCHAR(1024) DEFAULT NULL COMMENT '指定用户ID，英文逗号分隔',
+    publisher_id    BIGINT       DEFAULT NULL COMMENT '发布人ID',
+    publish_time    DATETIME     DEFAULT NULL COMMENT '发布时间',
+    revoke_time     DATETIME     DEFAULT NULL COMMENT '撤回时间',
+    create_time     DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time     DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+    PRIMARY KEY (id),
+    KEY idx_sys_notice_status (publish_status),
+    KEY idx_sys_notice_publish_time (publish_time)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '通知公告表';
+
+CREATE TABLE IF NOT EXISTS sys_notice_read (
+    notice_id BIGINT   NOT NULL COMMENT '通知ID',
+    user_id   BIGINT   NOT NULL COMMENT '用户ID',
+    read_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '阅读时间',
+    PRIMARY KEY (notice_id, user_id),
+    KEY idx_sys_notice_read_user (user_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '通知阅读记录表';
+
 -- ============================================================
 -- 初始化数据
 -- ============================================================
@@ -225,7 +255,14 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, route_name, redirect, com
     (10505, 105, '字典项查询', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 5, 1, 1, NULL, 'sys:dict-item:list', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
     (10506, 105, '字典项新增', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 6, 1, 1, NULL, 'sys:dict-item:create', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
     (10507, 105, '字典项编辑', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 7, 1, 1, NULL, 'sys:dict-item:update', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (10508, 105, '字典项删除', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 8, 1, 1, NULL, 'sys:dict-item:delete', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
+    (10508, 105, '字典项删除', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 8, 1, 1, NULL, 'sys:dict-item:delete', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (106,   1,   '通知公告', 'M', 'notice', 'Notice', NULL, 'system/notice/index', NULL, 'document', 6, 1, 1, 1, NULL, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (10601, 106, '通知查询', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 1, 1, 1, NULL, 'sys:notice:list', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (10602, 106, '通知新增', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 1, NULL, 'sys:notice:create', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (10603, 106, '通知编辑', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 3, 1, 1, NULL, 'sys:notice:update', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (10604, 106, '通知删除', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 4, 1, 1, NULL, 'sys:notice:delete', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (10605, 106, '通知发布', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 5, 1, 1, NULL, 'sys:notice:publish', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (10606, 106, '通知撤回', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 6, 1, 1, NULL, 'sys:notice:revoke', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
 
 -- 超级管理员 / 系统管理员拥有全部菜单权限
 INSERT INTO sys_role_menu (role_id, menu_id)
@@ -234,7 +271,7 @@ SELECT r.id, m.id FROM sys_role r CROSS JOIN sys_menu m WHERE r.id IN (1, 2);
 -- 其余演示角色：可进入各菜单页面，仅有查询权限
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.id, m.id FROM sys_role r
-JOIN sys_menu m ON m.id IN (1, 101, 102, 103, 104, 105, 10101, 10201, 10301, 10401, 10501)
+JOIN sys_menu m ON m.id IN (1, 101, 102, 103, 104, 105, 106, 10101, 10201, 10301, 10401, 10501, 10601)
 WHERE r.id BETWEEN 3 AND 10;
 
 -- 自定义权限用户角色的自定义部门数据范围
@@ -245,7 +282,9 @@ INSERT INTO sys_role_dept (role_id, dept_id) VALUES
 -- 字典类型
 INSERT INTO sys_dict (id, dict_code, name, status, remark, create_time, update_time) VALUES
     (1, 'gender', '性别', 1, '用户性别', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (2, 'common_status', '通用状态', 1, '启用/禁用状态', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
+    (2, 'common_status', '通用状态', 1, '启用/禁用状态', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (3, 'notice_type', '通知类型', 1, '通知公告类型', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (4, 'notice_level', '通知等级', 1, '通知公告等级', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
 
 -- 字典项
 INSERT INTO sys_dict_item (id, dict_code, label, value, sort, status, tag_type, create_time, update_time) VALUES
@@ -253,4 +292,9 @@ INSERT INTO sys_dict_item (id, dict_code, label, value, sort, status, tag_type, 
     (2, 'gender', '男', '1', 2, 1, 'primary', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
     (3, 'gender', '女', '2', 3, 1, 'danger', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
     (4, 'common_status', '正常', '1', 1, 1, 'primary', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (5, 'common_status', '禁用', '0', 2, 1, 'danger', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
+    (5, 'common_status', '禁用', '0', 2, 1, 'danger', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (6, 'notice_type', '通知', '1', 1, 1, 'primary', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (7, 'notice_type', '公告', '2', 2, 1, 'success', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (8, 'notice_level', '低', 'L', 1, 1, 'info', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (9, 'notice_level', '中', 'M', 2, 1, 'warning', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (10, 'notice_level', '高', 'H', 3, 1, 'danger', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
