@@ -1,5 +1,11 @@
 package com.platform.api.system.notice;
 
+import com.platform.api.common.query.Op;
+import com.platform.api.common.query.PageQuery;
+import com.platform.api.common.query.QueryField;
+import com.platform.api.common.query.QuerySort;
+import com.platform.api.common.query.QuerySortMapping;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,29 +40,21 @@ public final class NoticeDtos {
     /**
      * 通知分页查询参数（查询串绑定使用）。
      */
-    public static class NoticeQuery {
+    @QuerySort(value = {
+            @QuerySortMapping(property = "title", column = "n.title"),
+            @QuerySortMapping(property = "publishTime", column = "n.publish_time"),
+            @QuerySortMapping(property = "createTime", column = "n.create_time")
+    }, defaultSort = "n.create_time DESC, n.id DESC")
+    public static class NoticeQuery extends PageQuery {
 
-        private Integer pageNum = 1;
-        private Integer pageSize = 10;
+        @QueryField(value = "n.title", op = Op.LIKE)
         private String title;
+
+        @QueryField(value = "n.publish_status")
         private Integer publishStatus;
+
+        /** 0=未读 1=已读，仅在“我的通知”分页生效 */
         private Integer isRead;
-
-        public Integer getPageNum() {
-            return pageNum;
-        }
-
-        public void setPageNum(Integer pageNum) {
-            this.pageNum = pageNum;
-        }
-
-        public Integer getPageSize() {
-            return pageSize;
-        }
-
-        public void setPageSize(Integer pageSize) {
-            this.pageSize = pageSize;
-        }
 
         public String getTitle() {
             return title;

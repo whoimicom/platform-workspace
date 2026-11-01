@@ -1,5 +1,11 @@
 package com.platform.api.system.dict;
 
+import com.platform.api.common.query.Op;
+import com.platform.api.common.query.PageQuery;
+import com.platform.api.common.query.QueryField;
+import com.platform.api.common.query.QuerySort;
+import com.platform.api.common.query.QuerySortMapping;
+
 /**
  * 与前端 src/api/system/dict/types.ts 对应的数据结构。
  */
@@ -25,28 +31,16 @@ public final class DictDtos {
     public record DictItemOption(String value, String label, String tagType) {
     }
 
-    public static class DictTypeQuery {
+    @QuerySort(value = {
+            @QuerySortMapping(property = "name", column = "d.name"),
+            @QuerySortMapping(property = "dictCode", column = "d.dict_code")
+    }, defaultSort = "d.id ASC")
+    public static class DictTypeQuery extends PageQuery {
 
-        private Integer pageNum = 1;
-        private Integer pageSize = 10;
         private String keywords;
+
+        @QueryField(value = "d.status")
         private Integer status;
-
-        public Integer getPageNum() {
-            return pageNum;
-        }
-
-        public void setPageNum(Integer pageNum) {
-            this.pageNum = pageNum;
-        }
-
-        public Integer getPageSize() {
-            return pageSize;
-        }
-
-        public void setPageSize(Integer pageSize) {
-            this.pageSize = pageSize;
-        }
 
         public String getKeywords() {
             return keywords;
@@ -65,27 +59,13 @@ public final class DictDtos {
         }
     }
 
-    public static class DictItemQuery {
+    @QuerySort(value = {
+            @QuerySortMapping(property = "label", column = "label"),
+            @QuerySortMapping(property = "sort", column = "sort")
+    }, defaultSort = "sort ASC, id ASC")
+    public static class DictItemQuery extends PageQuery {
 
-        private Integer pageNum = 1;
-        private Integer pageSize = 10;
         private String keywords;
-
-        public Integer getPageNum() {
-            return pageNum;
-        }
-
-        public void setPageNum(Integer pageNum) {
-            this.pageNum = pageNum;
-        }
-
-        public Integer getPageSize() {
-            return pageSize;
-        }
-
-        public void setPageSize(Integer pageSize) {
-            this.pageSize = pageSize;
-        }
 
         public String getKeywords() {
             return keywords;

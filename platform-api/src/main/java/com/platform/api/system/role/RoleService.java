@@ -5,8 +5,9 @@ import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import com.platform.api.common.query.DynamicQueryExecutor;
+import com.platform.api.common.query.RawCondition;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -31,46 +32,40 @@ public class RoleService {
             4, "本人数据",
             5, "自定义部门数据");
 
-    private final NamedParameterJdbcTemplate jdbc;
+    private static final RowMapper<RoleDtos.RoleItem> ROLE_ITEM_MAPPER = (rs, rowNum) -> {
+        Integer dataScope = JdbcUtil.getInt(rs, "data_scope");
+        return new RoleDtos.RoleItem(
+                String.valueOf(rs.getLong("id")),
+                rs.getString("code"),
+                rs.getString("name"),
+                JdbcUtil.getInt(rs, "sort"),
+                JdbcUtil.getInt(rs, "status"),
+                dataScope,
+                DATA_SCOPE_LABELS.getOrDefault(dataScope == null ? 1 : dataScope, ""),
+                rs.getString("update_time"));
+    };
 
-    public RoleService(NamedParameterJdbcTemplate jdbc) {
+    private static final String ROLE_BASE_SELECT = """
+            SELECT r.id, r.code, r.name, r.sort, r.status, r.data_scope,
+                   DATE_FORMAT(r.update_time, '%Y-%m-%d %H:%i:%s') AS update_time
+              FROM sys_role r
+            """;
+
+    private final NamedParameterJdbcTemplate jdbc;
+    private final DynamicQueryExecutor executor;
+
+    public RoleService(NamedParameterJdbcTemplate jdbc, DynamicQueryExecutor executor) {
         this.jdbc = jdbc;
+        this.executor = executor;
     }
 
     public Page<RoleDtos.RoleItem> page(RoleDtos.RoleQuery query) {
-        StringBuilder where = new StringBuilder(" WHERE 1 = 1");
-        Map<String, Object> params = new HashMap<>();
+        List<RawCondition> extras = new ArrayList<>();
         if (query.getKeywords() != null && !query.getKeywords().isBlank()) {
-            where.append(" AND (r.name LIKE :keywords OR r.code LIKE :keywords)");
-            params.put("keywords", "%" + query.getKeywords().trim() + "%");
+            extras.add(RawCondition.of("(r.name LIKE :keywords OR r.code LIKE :keywords)",
+                    Map.of("keywords", "%" + query.getKeywords().trim() + "%")));
         }
-
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_role r" + where, params, Long.class);
-
-        int pageNum = query.getPageNum() == null ? 1 : Math.max(1, query.getPageNum());
-        int pageSize = query.getPageSize() == null ? 10 : Math.min(100, Math.max(1, query.getPageSize()));
-        params.put("limit", pageSize);
-        params.put("offset", (long) (pageNum - 1) * pageSize);
-
-        List<RoleDtos.RoleItem> list = jdbc.query(
-                "SELECT r.id, r.code, r.name, r.sort, r.status, r.data_scope, "
-                        + "DATE_FORMAT(r.update_time, '%Y-%m-%d %H:%i:%s') AS update_time "
-                        + "FROM sys_role r" + where
-                        + " ORDER BY r.sort ASC, r.id ASC LIMIT :limit OFFSET :offset",
-                params, (rs, rowNum) -> {
-                    Integer dataScope = JdbcUtil.getInt(rs, "data_scope");
-                    return new RoleDtos.RoleItem(
-                            String.valueOf(rs.getLong("id")),
-                            rs.getString("code"),
-                            rs.getString("name"),
-                            JdbcUtil.getInt(rs, "sort"),
-                            JdbcUtil.getInt(rs, "status"),
-                            dataScope,
-                            DATA_SCOPE_LABELS.getOrDefault(dataScope == null ? 1 : dataScope, ""),
-                            rs.getString("update_time"));
-                });
-
-        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
+        return executor.page(ROLE_BASE_SELECT, query, ROLE_ITEM_MAPPER, extras.toArray(RawCondition[]::new));
     }
 
     public List<OptionItem> options() {

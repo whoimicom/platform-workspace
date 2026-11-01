@@ -1,5 +1,11 @@
 package com.platform.api.system.user;
 
+import com.platform.api.common.query.Op;
+import com.platform.api.common.query.PageQuery;
+import com.platform.api.common.query.QueryField;
+import com.platform.api.common.query.QuerySort;
+import com.platform.api.common.query.QuerySortMapping;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,32 +38,31 @@ public final class UserDtos {
     /**
      * 用户分页查询参数（查询串绑定使用）。
      */
-    public static class UserQuery {
+    @QuerySort(value = {
+            @QuerySortMapping(property = "id", column = "u.id"),
+            @QuerySortMapping(property = "username", column = "u.username"),
+            @QuerySortMapping(property = "createTime", column = "u.create_time"),
+            @QuerySortMapping(property = "updateTime", column = "u.update_time")
+    }, defaultSort = "u.create_time DESC, u.id DESC")
+    public static class UserQuery extends PageQuery {
 
-        private Integer pageNum = 1;
-        private Integer pageSize = 10;
-        private String keywords;
+        @QueryField(value = "u.status")
         private Integer status;
+
+        @QueryField(value = "u.dept_id")
         private String deptId;
+
+        /** 由 createTime 区间拆分，GE u.create_time */
+        @QueryField(value = "u.create_time", op = Op.GE)
+        private String createTimeStart;
+
+        /** 由 createTime 区间拆分，LE u.create_time */
+        @QueryField(value = "u.create_time", op = Op.LE)
+        private String createTimeEnd;
+
+        private String keywords;
         private List<String> roleIds = new ArrayList<>();
         private List<String> createTime = new ArrayList<>();
-        private List<String> sort = new ArrayList<>();
-
-        public Integer getPageNum() {
-            return pageNum;
-        }
-
-        public void setPageNum(Integer pageNum) {
-            this.pageNum = pageNum;
-        }
-
-        public Integer getPageSize() {
-            return pageSize;
-        }
-
-        public void setPageSize(Integer pageSize) {
-            this.pageSize = pageSize;
-        }
 
         public String getKeywords() {
             return keywords;
@@ -65,22 +70,6 @@ public final class UserDtos {
 
         public void setKeywords(String keywords) {
             this.keywords = keywords;
-        }
-
-        public Integer getStatus() {
-            return status;
-        }
-
-        public void setStatus(Integer status) {
-            this.status = status;
-        }
-
-        public String getDeptId() {
-            return deptId;
-        }
-
-        public void setDeptId(String deptId) {
-            this.deptId = deptId;
         }
 
         public List<String> getRoleIds() {
@@ -95,16 +84,31 @@ public final class UserDtos {
             return createTime;
         }
 
+        /**
+         * 前端提交日期区间 [start, end]，拆分为含时分秒的 BETWEEN 边界。
+         */
         public void setCreateTime(List<String> createTime) {
             this.createTime = createTime;
+            if (createTime != null && !createTime.isEmpty()) {
+                String start = normalizeDate(createTime.get(0));
+                if (start != null) {
+                    this.createTimeStart = start + " 00:00:00";
+                }
+                if (createTime.size() >= 2) {
+                    String end = normalizeDate(createTime.get(1));
+                    if (end != null) {
+                        this.createTimeEnd = end + " 23:59:59";
+                    }
+                }
+            }
         }
 
-        public List<String> getSort() {
-            return sort;
-        }
-
-        public void setSort(List<String> sort) {
-            this.sort = sort;
+        private String normalizeDate(String value) {
+            if (value == null || value.isBlank()) {
+                return null;
+            }
+            String trimmed = value.trim();
+            return trimmed.length() >= 10 ? trimmed.substring(0, 10) : null;
         }
     }
 }

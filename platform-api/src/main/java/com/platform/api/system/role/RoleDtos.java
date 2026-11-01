@@ -1,5 +1,9 @@
 package com.platform.api.system.role;
 
+import com.platform.api.common.query.PageQuery;
+import com.platform.api.common.query.QuerySort;
+import com.platform.api.common.query.QuerySortMapping;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,27 +23,15 @@ public final class RoleDtos {
                            Integer dataScope, List<String> deptIds, String remark) {
     }
 
-    public static class RoleQuery {
+    @QuerySort(value = {
+            @QuerySortMapping(property = "code", column = "r.code"),
+            @QuerySortMapping(property = "name", column = "r.name"),
+            @QuerySortMapping(property = "sort", column = "r.sort"),
+            @QuerySortMapping(property = "updateTime", column = "r.update_time")
+    }, defaultSort = "r.sort ASC, r.id ASC")
+    public static class RoleQuery extends PageQuery {
 
-        private Integer pageNum = 1;
-        private Integer pageSize = 10;
         private String keywords;
-
-        public Integer getPageNum() {
-            return pageNum;
-        }
-
-        public void setPageNum(Integer pageNum) {
-            this.pageNum = pageNum;
-        }
-
-        public Integer getPageSize() {
-            return pageSize;
-        }
-
-        public void setPageSize(Integer pageSize) {
-            this.pageSize = pageSize;
-        }
 
         public String getKeywords() {
             return keywords;

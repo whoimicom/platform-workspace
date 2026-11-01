@@ -4,8 +4,8 @@ import com.platform.api.common.BusinessException;
 import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import com.platform.api.common.query.DynamicQueryExecutor;
+import com.platform.api.common.query.RawCondition;
 import com.platform.api.security.LoginUser;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -51,67 +51,38 @@ public class NoticeService {
             """;
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final DynamicQueryExecutor executor;
 
-    public NoticeService(NamedParameterJdbcTemplate jdbc) {
+    public NoticeService(NamedParameterJdbcTemplate jdbc, DynamicQueryExecutor executor) {
         this.jdbc = jdbc;
+        this.executor = executor;
     }
 
     /**
      * 管理端分页。
      */
     public Page<NoticeDtos.NoticeItem> page(NoticeDtos.NoticeQuery query, LoginUser loginUser) {
-        StringBuilder where = new StringBuilder(" WHERE 1 = 1");
-        Map<String, Object> params = new HashMap<>();
-        params.put("userId", currentUserId(loginUser));
-        if (query.getTitle() != null && !query.getTitle().isBlank()) {
-            where.append(" AND n.title LIKE :title");
-            params.put("title", "%" + query.getTitle().trim() + "%");
-        }
-        if (query.getPublishStatus() != null) {
-            where.append(" AND n.publish_status = :publishStatus");
-            params.put("publishStatus", query.getPublishStatus());
-        }
-
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_notice n" + where, params, Long.class);
-        int pageNum = query.getPageNum() == null ? 1 : Math.max(1, query.getPageNum());
-        int pageSize = query.getPageSize() == null ? 10 : Math.min(100, Math.max(1, query.getPageSize()));
-        applyPage(params, pageNum, pageSize);
-
-        List<NoticeDtos.NoticeItem> list = jdbc.query(
-                DETAIL_SELECT + where + " ORDER BY n.create_time DESC, n.id DESC LIMIT :limit OFFSET :offset",
-                params, this::mapItem);
-        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
+        return executor.page(DETAIL_SELECT, query,
+                Map.of("userId", currentUserId(loginUser)), this::mapItem);
     }
 
     /**
      * 我的通知分页：仅已发布且对当前用户可见的通知。
      */
     public Page<NoticeDtos.NoticeItem> myPage(NoticeDtos.NoticeQuery query, LoginUser loginUser) {
-        StringBuilder where = new StringBuilder(visibleWhere());
-        Map<String, Object> params = new HashMap<>();
-        params.put("userId", currentUserId(loginUser));
-
-        if (query.getTitle() != null && !query.getTitle().isBlank()) {
-            where.append(" AND n.title LIKE :title");
-            params.put("title", "%" + query.getTitle().trim() + "%");
-        }
+        long userId = currentUserId(loginUser);
+        List<RawCondition> extras = new ArrayList<>();
+        extras.add(RawCondition.of("n.publish_status = 1 AND (n.target_type = 1 "
+                + "OR FIND_IN_SET(CAST(:userId AS CHAR), n.target_user_ids))", Map.of("userId", userId)));
         if (query.getIsRead() != null && query.getIsRead() == 0) {
-            where.append(" AND NOT EXISTS (SELECT 1 FROM sys_notice_read nr "
-                    + "WHERE nr.notice_id = n.id AND nr.user_id = :userId)");
+            extras.add(RawCondition.of("NOT EXISTS (SELECT 1 FROM sys_notice_read nr "
+                    + "WHERE nr.notice_id = n.id AND nr.user_id = :userId)", Map.of("userId", userId)));
         } else if (query.getIsRead() != null && query.getIsRead() == 1) {
-            where.append(" AND EXISTS (SELECT 1 FROM sys_notice_read nr "
-                    + "WHERE nr.notice_id = n.id AND nr.user_id = :userId)");
+            extras.add(RawCondition.of("EXISTS (SELECT 1 FROM sys_notice_read nr "
+                    + "WHERE nr.notice_id = n.id AND nr.user_id = :userId)", Map.of("userId", userId)));
         }
-
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_notice n" + where, params, Long.class);
-        int pageNum = query.getPageNum() == null ? 1 : Math.max(1, query.getPageNum());
-        int pageSize = query.getPageSize() == null ? 10 : Math.min(100, Math.max(1, query.getPageSize()));
-        applyPage(params, pageNum, pageSize);
-
-        List<NoticeDtos.NoticeItem> list = jdbc.query(
-                DETAIL_SELECT + where + " ORDER BY n.publish_time DESC, n.id DESC LIMIT :limit OFFSET :offset",
-                params, this::mapItem);
-        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
+        return executor.page(DETAIL_SELECT, query, Map.of("userId", userId),
+                "n.publish_time DESC, n.id DESC", this::mapItem, extras.toArray(RawCondition[]::new));
     }
 
     public NoticeDtos.NoticeForm form(Long id) {
@@ -309,13 +280,6 @@ public class NoticeService {
                 JdbcUtil.getInt(rs, "publish_status"), JdbcUtil.getInt(rs, "is_read"),
                 JdbcUtil.getInt(rs, "target_type"), rs.getString("publisher_name"),
                 rs.getString("publish_time"), rs.getString("revoke_time"), rs.getString("create_time"));
-    }
-
-    private void applyPage(Map<String, Object> params, Integer pageNum, Integer pageSize) {
-        int num = pageNum == null ? 1 : Math.max(1, pageNum);
-        int size = pageSize == null ? 10 : Math.min(100, Math.max(1, pageSize));
-        params.put("limit", size);
-        params.put("offset", (long) (num - 1) * size);
     }
 
     private void validate(NoticeDtos.NoticeForm form) {

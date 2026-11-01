@@ -5,10 +5,11 @@ import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import com.platform.api.common.query.DynamicQueryExecutor;
+import com.platform.api.common.query.RawCondition;
 import com.platform.api.config.AppProperties;
 import com.platform.api.security.LoginUser;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,11 +25,18 @@ import java.util.Set;
 @Service
 public class UserService {
 
-    private static final Map<String, String> SORT_COLUMNS = Map.of(
-            "id", "u.id",
-            "username", "u.username",
-            "createTime", "u.create_time",
-            "updateTime", "u.update_time");
+    private static final RowMapper<UserDtos.UserItem> USER_ITEM_MAPPER = (rs, rowNum) -> new UserDtos.UserItem(
+            String.valueOf(rs.getLong("id")),
+            rs.getString("avatar"),
+            rs.getString("create_time"),
+            rs.getString("dept_name"),
+            rs.getString("email"),
+            JdbcUtil.getInt(rs, "gender"),
+            rs.getString("mobile"),
+            rs.getString("nickname"),
+            rs.getString("role_names"),
+            JdbcUtil.getInt(rs, "status"),
+            rs.getString("username"));
 
     private static final String BASE_SELECT = """
             SELECT u.id AS id,
@@ -51,15 +59,18 @@ public class UserService {
 
     private final SysUserRepository userRepository;
     private final NamedParameterJdbcTemplate jdbc;
+    private final DynamicQueryExecutor executor;
     private final PasswordEncoder passwordEncoder;
     private final AppProperties properties;
 
     public UserService(SysUserRepository userRepository,
                        NamedParameterJdbcTemplate jdbc,
+                       DynamicQueryExecutor executor,
                        PasswordEncoder passwordEncoder,
                        AppProperties properties) {
         this.userRepository = userRepository;
         this.jdbc = jdbc;
+        this.executor = executor;
         this.passwordEncoder = passwordEncoder;
         this.properties = properties;
     }
@@ -104,22 +115,12 @@ public class UserService {
     }
 
     public Page<UserDtos.UserItem> page(UserDtos.UserQuery query) {
-        StringBuilder where = new StringBuilder(" WHERE 1 = 1");
-        Map<String, Object> params = new HashMap<>();
-
+        List<RawCondition> extras = new ArrayList<>();
         String keywords = query.getKeywords();
         if (keywords != null && !keywords.isBlank()) {
-            where.append(" AND (u.username LIKE :keywords OR u.nickname LIKE :keywords OR u.mobile LIKE :keywords)");
-            params.put("keywords", "%" + keywords.trim() + "%");
-        }
-        if (query.getStatus() != null) {
-            where.append(" AND u.status = :status");
-            params.put("status", query.getStatus());
-        }
-        Long deptId = IdUtils.parseLong(query.getDeptId());
-        if (deptId != null) {
-            where.append(" AND u.dept_id = :deptId");
-            params.put("deptId", deptId);
+            extras.add(RawCondition.of(
+                    "(u.username LIKE :keywords OR u.nickname LIKE :keywords OR u.mobile LIKE :keywords)",
+                    Map.of("keywords", "%" + keywords.trim() + "%")));
         }
         List<Long> roleIds = new ArrayList<>();
         if (query.getRoleIds() != null) {
@@ -131,44 +132,11 @@ public class UserService {
             }
         }
         if (!roleIds.isEmpty()) {
-            where.append(" AND EXISTS (SELECT 1 FROM sys_user_role ur "
-                    + "WHERE ur.user_id = u.id AND ur.role_id IN (:roleIds))");
-            params.put("roleIds", roleIds);
+            extras.add(RawCondition.of(
+                    "EXISTS (SELECT 1 FROM sys_user_role ur WHERE ur.user_id = u.id AND ur.role_id IN (:roleIds))",
+                    Map.of("roleIds", roleIds)));
         }
-        if (query.getCreateTime() != null && query.getCreateTime().size() >= 2) {
-            String start = normalizeDate(query.getCreateTime().get(0));
-            String end = normalizeDate(query.getCreateTime().get(1));
-            if (start != null && end != null) {
-                where.append(" AND u.create_time >= :startTime AND u.create_time <= :endTime");
-                params.put("startTime", start + " 00:00:00");
-                params.put("endTime", end + " 23:59:59");
-            }
-        }
-
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_user u" + where, params, Long.class);
-
-        int pageNum = query.getPageNum() == null ? 1 : Math.max(1, query.getPageNum());
-        int pageSize = query.getPageSize() == null ? 10 : Math.min(100, Math.max(1, query.getPageSize()));
-        params.put("limit", pageSize);
-        params.put("offset", (long) (pageNum - 1) * pageSize);
-
-        List<UserDtos.UserItem> list = jdbc.query(
-                BASE_SELECT + where + " ORDER BY " + resolveOrderBy(query.getSort())
-                        + " LIMIT :limit OFFSET :offset",
-                params, (rs, rowNum) -> new UserDtos.UserItem(
-                        String.valueOf(rs.getLong("id")),
-                        rs.getString("avatar"),
-                        rs.getString("create_time"),
-                        rs.getString("dept_name"),
-                        rs.getString("email"),
-                        JdbcUtil.getInt(rs, "gender"),
-                        rs.getString("mobile"),
-                        rs.getString("nickname"),
-                        rs.getString("role_names"),
-                        JdbcUtil.getInt(rs, "status"),
-                        rs.getString("username")));
-
-        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
+        return executor.page(BASE_SELECT, query, USER_ITEM_MAPPER, extras.toArray(RawCondition[]::new));
     }
 
     public UserDtos.UserForm form(Long id) {
@@ -309,38 +277,6 @@ public class UserService {
                         Map.of("userId", userId, "roleId", parsed));
             }
         }
-    }
-
-    private String resolveOrderBy(List<String> sort) {
-        String defaultOrder = "u.create_time DESC, u.id DESC";
-        if (sort == null || sort.isEmpty()) {
-            return defaultOrder;
-        }
-        List<String> parts = new ArrayList<>();
-        for (String expression : sort) {
-            if (expression == null) {
-                continue;
-            }
-            String[] pieces = expression.split(",");
-            if (pieces.length != 2) {
-                continue;
-            }
-            String column = SORT_COLUMNS.get(pieces[0].trim());
-            if (column == null) {
-                continue;
-            }
-            String direction = "desc".equalsIgnoreCase(pieces[1].trim()) ? "DESC" : "ASC";
-            parts.add(column + " " + direction);
-        }
-        return parts.isEmpty() ? defaultOrder : String.join(", ", parts);
-    }
-
-    private String normalizeDate(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.length() >= 10 ? trimmed.substring(0, 10) : null;
     }
 
     private record FormRow(Long id, String avatar, Long deptId, String email, Integer gender,

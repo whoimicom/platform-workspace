@@ -5,8 +5,9 @@ import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import com.platform.api.common.query.DynamicQueryExecutor;
+import com.platform.api.common.query.RawCondition;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,41 +24,41 @@ import java.util.Map;
 @Service
 public class DictService {
 
-    private final NamedParameterJdbcTemplate jdbc;
+    private static final RowMapper<DictDtos.DictTypeItem> DICT_TYPE_MAPPER = (rs, rowNum) -> new DictDtos.DictTypeItem(
+            String.valueOf(rs.getLong("id")),
+            rs.getString("name"),
+            rs.getString("dict_code"),
+            JdbcUtil.getInt(rs, "status"));
 
-    public DictService(NamedParameterJdbcTemplate jdbc) {
+    private static final RowMapper<DictDtos.DictItem> DICT_ITEM_MAPPER = (rs, rowNum) -> new DictDtos.DictItem(
+            String.valueOf(rs.getLong("id")),
+            rs.getString("dict_code"),
+            rs.getString("label"),
+            rs.getString("value"),
+            JdbcUtil.getInt(rs, "status"),
+            JdbcUtil.getInt(rs, "sort"),
+            rs.getString("tag_type"));
+
+    private static final String DICT_TYPE_BASE_SELECT = "SELECT d.id, d.name, d.dict_code, d.status FROM sys_dict d";
+
+    private static final String DICT_ITEM_BASE_SELECT =
+            "SELECT id, dict_code, label, value, status, sort, tag_type FROM sys_dict_item";
+
+    private final NamedParameterJdbcTemplate jdbc;
+    private final DynamicQueryExecutor executor;
+
+    public DictService(NamedParameterJdbcTemplate jdbc, DynamicQueryExecutor executor) {
         this.jdbc = jdbc;
+        this.executor = executor;
     }
 
     public Page<DictDtos.DictTypeItem> typePage(DictDtos.DictTypeQuery query) {
-        StringBuilder where = new StringBuilder(" WHERE 1 = 1");
-        Map<String, Object> params = new HashMap<>();
+        List<RawCondition> extras = new ArrayList<>();
         if (query.getKeywords() != null && !query.getKeywords().isBlank()) {
-            where.append(" AND (d.name LIKE :keywords OR d.dict_code LIKE :keywords)");
-            params.put("keywords", "%" + query.getKeywords().trim() + "%");
+            extras.add(RawCondition.of("(d.name LIKE :keywords OR d.dict_code LIKE :keywords)",
+                    Map.of("keywords", "%" + query.getKeywords().trim() + "%")));
         }
-        if (query.getStatus() != null) {
-            where.append(" AND d.status = :status");
-            params.put("status", query.getStatus());
-        }
-
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_dict d" + where, params, Long.class);
-
-        int pageNum = query.getPageNum() == null ? 1 : Math.max(1, query.getPageNum());
-        int pageSize = query.getPageSize() == null ? 10 : Math.min(100, Math.max(1, query.getPageSize()));
-        params.put("limit", pageSize);
-        params.put("offset", (long) (pageNum - 1) * pageSize);
-
-        List<DictDtos.DictTypeItem> list = jdbc.query(
-                "SELECT d.id, d.name, d.dict_code, d.status FROM sys_dict d" + where
-                        + " ORDER BY d.id ASC LIMIT :limit OFFSET :offset",
-                params, (rs, rowNum) -> new DictDtos.DictTypeItem(
-                        String.valueOf(rs.getLong("id")),
-                        rs.getString("name"),
-                        rs.getString("dict_code"),
-                        JdbcUtil.getInt(rs, "status")));
-
-        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
+        return executor.page(DICT_TYPE_BASE_SELECT, query, DICT_TYPE_MAPPER, extras.toArray(RawCondition[]::new));
     }
 
     public List<OptionItem> typeOptions() {
@@ -132,34 +134,13 @@ public class DictService {
     }
 
     public Page<DictDtos.DictItem> itemPage(String dictCode, DictDtos.DictItemQuery query) {
-        StringBuilder where = new StringBuilder(" WHERE dict_code = :dictCode");
-        Map<String, Object> params = new HashMap<>();
-        params.put("dictCode", dictCode);
+        List<RawCondition> extras = new ArrayList<>();
+        extras.add(RawCondition.of("dict_code = :dictCode", Map.of("dictCode", dictCode)));
         if (query.getKeywords() != null && !query.getKeywords().isBlank()) {
-            where.append(" AND (label LIKE :keywords OR value LIKE :keywords)");
-            params.put("keywords", "%" + query.getKeywords().trim() + "%");
+            extras.add(RawCondition.of("(label LIKE :keywords OR value LIKE :keywords)",
+                    Map.of("keywords", "%" + query.getKeywords().trim() + "%")));
         }
-
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_dict_item" + where, params, Long.class);
-
-        int pageNum = query.getPageNum() == null ? 1 : Math.max(1, query.getPageNum());
-        int pageSize = query.getPageSize() == null ? 10 : Math.min(100, Math.max(1, query.getPageSize()));
-        params.put("limit", pageSize);
-        params.put("offset", (long) (pageNum - 1) * pageSize);
-
-        List<DictDtos.DictItem> list = jdbc.query(
-                "SELECT id, dict_code, label, value, status, sort, tag_type FROM sys_dict_item" + where
-                        + " ORDER BY sort ASC, id ASC LIMIT :limit OFFSET :offset",
-                params, (rs, rowNum) -> new DictDtos.DictItem(
-                        String.valueOf(rs.getLong("id")),
-                        rs.getString("dict_code"),
-                        rs.getString("label"),
-                        rs.getString("value"),
-                        JdbcUtil.getInt(rs, "status"),
-                        JdbcUtil.getInt(rs, "sort"),
-                        rs.getString("tag_type")));
-
-        return new PageImpl<>(list, PageRequest.of(pageNum - 1, pageSize), total);
+        return executor.page(DICT_ITEM_BASE_SELECT, query, DICT_ITEM_MAPPER, extras.toArray(RawCondition[]::new));
     }
 
     public List<DictDtos.DictItemOption> itemOptions(String dictCode) {
