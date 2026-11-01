@@ -1,12 +1,12 @@
 server:
   # 前端 .env.development 的 API_PROXY_TARGET 默认指向 8000
-  port: ${SERVER_PORT:8000}
+  port: 8000
 
 spring:
   application:
     name: platform-api
   datasource:
-    # 优先读取环境变量，未设置时使用默认值
+    # 数据库配置允许环境变量覆盖，便于不同环境部署
     url: ${MYSQL_P_URL:jdbc:mysql://127.0.0.1:3306/platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
     username: ${MYSQL_P_USERNAME:platform}
     password: ${MYSQL_P_PASSWORD:platform123456}
@@ -21,25 +21,21 @@ spring:
 
 app:
   # 是否校验图形验证码（前端登录页默认展示验证码）
-  captcha-enabled: ${APP_CAPTCHA_ENABLED:true}
+  captcha-enabled: true
   # 新增用户及 SQL 初始账号 NEED_INIT 的默认密码
-  default-password: ${APP_DEFAULT_PASSWORD:123456}
+  default-password: 123456
   jwt:
-    # 至少 32 字节，生产环境务必通过环境变量覆盖
-    secret: ${JWT_SECRET:platform-api-default-secret-change-me-0123456789abcdef}
+    # 至少 32 字节，生产环境务必修改
+    secret: platform-api-default-secret-change-me-0123456789abcdef
     # 访问令牌有效期（秒）
-    access-expire-seconds: ${JWT_ACCESS_EXPIRE:1800}
+    access-expire-seconds: 1800
     # 刷新令牌有效期（秒）
-    refresh-expire-seconds: ${JWT_REFRESH_EXPIRE:604800}
+    refresh-expire-seconds: 604800
   access-log:
     # 接口访问日志总开关（打印请求/返回报文、耗时、traceId）
-    enabled: ${APP_ACCESS_LOG_ENABLED:true}
+    enabled: true
     # 请求/返回报文最大记录长度，超出截断
-    max-body-length: ${APP_ACCESS_LOG_MAX_BODY:4096}
+    max-body-length: 4096
     # 慢请求阈值（毫秒），超过以 WARN 输出
-    slow-threshold-ms: ${APP_ACCESS_LOG_SLOW_MS:3000}
+    slow-threshold-ms: 3000
 
-logging:
-  pattern:
-    # 在控制台日志中输出 traceId，便于串联一次请求的所有日志
-    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%15.15t] %X{traceId} %-40.40logger{39} : %m%n"
