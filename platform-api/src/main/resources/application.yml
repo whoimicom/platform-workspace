@@ -31,3 +31,15 @@ app:
     access-expire-seconds: ${JWT_ACCESS_EXPIRE:1800}
     # 刷新令牌有效期（秒）
     refresh-expire-seconds: ${JWT_REFRESH_EXPIRE:604800}
+  access-log:
+    # 接口访问日志总开关（打印请求/返回报文、耗时、traceId）
+    enabled: ${APP_ACCESS_LOG_ENABLED:true}
+    # 请求/返回报文最大记录长度，超出截断
+    max-body-length: ${APP_ACCESS_LOG_MAX_BODY:4096}
+    # 慢请求阈值（毫秒），超过以 WARN 输出
+    slow-threshold-ms: ${APP_ACCESS_LOG_SLOW_MS:3000}
+
+logging:
+  pattern:
+    # 在控制台日志中输出 traceId，便于串联一次请求的所有日志
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%15.15t] %X{traceId} %-40.40logger{39} : %m%n"
