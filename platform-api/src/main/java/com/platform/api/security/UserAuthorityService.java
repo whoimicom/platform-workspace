@@ -50,8 +50,18 @@ public class UserAuthorityService {
                 params,
                 (rs, rowNum) -> rs.getString("perm"));
 
+        // 用户级追加权限并入
+        List<String> extraPermissions = jdbc.query(
+                "SELECT DISTINCT m.perm FROM sys_menu m "
+                        + "JOIN sys_user_menu um ON um.menu_id = m.id "
+                        + "WHERE um.user_id = :userId "
+                        + "AND m.perm IS NOT NULL AND m.perm <> ''",
+                params,
+                (rs, rowNum) -> rs.getString("perm"));
+
         Set<String> roles = new LinkedHashSet<>(roleCodes);
         Set<String> perms = new LinkedHashSet<>(permissions);
+        perms.addAll(extraPermissions);
         if (roles.contains("ROOT")) {
             perms.add("*:*:*");
         }

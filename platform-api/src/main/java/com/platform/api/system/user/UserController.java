@@ -86,6 +86,22 @@ public class UserController {
         return ResultInfo.ok();
     }
 
+    @GetMapping("/{id}/perms")
+    @PreAuthorize("@perm.has('sys:user:perm')")
+    public ResultInfo<UserDtos.UserPerms> perms(@PathVariable Long id,
+                                                @AuthenticationPrincipal LoginUser loginUser) {
+        return ResultInfo.ok(userService.perms(id, loginUser));
+    }
+
+    @PutMapping("/{id}/perms")
+    @PreAuthorize("@perm.has('sys:user:perm')")
+    public ResultInfo<Void> updatePerms(@PathVariable Long id,
+                                        @RequestBody UserDtos.UserPermsForm form,
+                                        @AuthenticationPrincipal LoginUser loginUser) {
+        userService.updatePerms(id, form, loginUser);
+        return ResultInfo.ok();
+    }
+
     @DeleteMapping("/{ids}")
     @PreAuthorize("@perm.has('sys:user:delete')")
     public ResultInfo<Void> delete(@PathVariable String ids,

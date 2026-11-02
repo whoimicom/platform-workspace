@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -106,9 +107,18 @@ public class UserService {
                         + "AND m.perm IS NOT NULL AND m.perm <> ''",
                 params, (rs, rowNum) -> rs.getString("perm"));
 
+        // 追加权限（用户级）并入按钮/接口权限
+        List<String> extraPermissions = jdbc.query(
+                "SELECT DISTINCT m.perm FROM sys_menu m "
+                        + "JOIN sys_user_menu um ON um.menu_id = m.id "
+                        + "WHERE um.user_id = :userId "
+                        + "AND m.perm IS NOT NULL AND m.perm <> ''",
+                params, (rs, rowNum) -> rs.getString("perm"));
+
         List<String> roles = rolePairs.stream().map(pair -> pair[0]).toList();
         List<String> roleNames = rolePairs.stream().map(pair -> pair[1]).toList();
         Set<String> perms = new LinkedHashSet<>(permissions);
+        perms.addAll(extraPermissions);
         if (roles.contains("ROOT")) {
             perms.add("*:*:*");
         }
@@ -268,6 +278,71 @@ public class UserService {
         jdbc.update("UPDATE sys_user SET password = :password, update_time = :updateTime WHERE id = :id", params);
     }
 
+    /**
+     * 用户追加权限：角色定义菜单集 + 已追加菜单集。
+     */
+    public UserDtos.UserPerms perms(Long id, LoginUser loginUser) {
+        orgScope.checkUser(loginUser, id);
+        Map<String, Object> params = Map.of("userId", id);
+        List<String> roleMenuIds = jdbc.queryForList(
+                "SELECT DISTINCT rm.menu_id FROM sys_role_menu rm "
+                        + "JOIN sys_role r ON r.id = rm.role_id "
+                        + "JOIN sys_user_role ur ON ur.role_id = r.id "
+                        + "WHERE ur.user_id = :userId AND r.status = 1",
+                params, Long.class).stream().map(String::valueOf).toList();
+        List<String> extraMenuIds = jdbc.queryForList(
+                "SELECT menu_id FROM sys_user_menu WHERE user_id = :userId", params, Long.class)
+                .stream().map(String::valueOf).toList();
+        return new UserDtos.UserPerms(roleMenuIds, extraMenuIds);
+    }
+
+    /**
+     * 保存用户追加权限：剔除角色已含项，非 ROOT 仅能分配自己可见范围内的菜单。
+     */
+    @Transactional
+    public void updatePerms(Long id, UserDtos.UserPermsForm form, LoginUser loginUser) {
+        orgScope.checkUser(loginUser, id);
+        if (!userRepository.existsById(id)) {
+            throw BusinessException.notFound("用户不存在");
+        }
+        Set<Long> roleMenuIds = new LinkedHashSet<>(jdbc.queryForList(
+                "SELECT DISTINCT rm.menu_id FROM sys_role_menu rm "
+                        + "JOIN sys_role r ON r.id = rm.role_id "
+                        + "JOIN sys_user_role ur ON ur.role_id = r.id "
+                        + "WHERE ur.user_id = :userId AND r.status = 1",
+                Map.of("userId", id), Long.class));
+
+        // 非 ROOT 管理员：可分配菜单限定在自己架构子树对应的菜单归属内
+        Set<Long> assignableMenuOrgIds = null;
+        OrgScope.Scope scope = orgScope.scopeOf(loginUser);
+        if (scope != null) {
+            assignableMenuOrgIds = orgScope.subtreeIds(scope);
+        }
+
+        Set<Long> extras = new LinkedHashSet<>();
+        if (form.menuIds() != null) {
+            for (String menuId : form.menuIds()) {
+                Long parsed = IdUtils.parseLong(menuId);
+                if (parsed == null || roleMenuIds.contains(parsed) || !extras.add(parsed)) {
+                    continue;
+                }
+                if (assignableMenuOrgIds != null) {
+                    Long menuOrgId = jdbc.queryForObject(
+                            "SELECT org_id FROM sys_menu WHERE id = :id", Map.of("id", parsed), Long.class);
+                    if (menuOrgId == null || !assignableMenuOrgIds.contains(menuOrgId)) {
+                        throw BusinessException.forbidden("无权分配该菜单权限");
+                    }
+                }
+            }
+        }
+
+        jdbc.update("DELETE FROM sys_user_menu WHERE user_id = :userId", Map.of("userId", id));
+        for (Long menuId : extras) {
+            jdbc.update("INSERT INTO sys_user_menu (user_id, menu_id) VALUES (:userId, :menuId)",
+                    Map.of("userId", id, "menuId", menuId));
+        }
+    }
+
     public void delete(String ids, LoginUser loginUser) {
         List<Long> idList = IdUtils.parse(ids);
         if (idList.isEmpty()) {
@@ -278,6 +353,7 @@ public class UserService {
         }
         Map<String, Object> params = Map.of("ids", idList);
         jdbc.update("DELETE FROM sys_user_role WHERE user_id IN (:ids)", params);
+        jdbc.update("DELETE FROM sys_user_menu WHERE user_id IN (:ids)", params);
         jdbc.update("DELETE FROM sys_user WHERE id IN (:ids)", params);
     }
 

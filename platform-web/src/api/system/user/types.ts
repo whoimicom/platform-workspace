@@ -151,6 +151,24 @@ export interface PasswordVerifyForm {
 }
 
 /**
+ * 用户权限（角色菜单 + 用户追加菜单）
+ */
+export interface UserPerms {
+  /** 用户所属角色定义的菜单 ID 集合 */
+  roleMenuIds: string[];
+  /** 用户在角色之外单独追加的菜单 ID 集合 */
+  extraMenuIds: string[];
+}
+
+/**
+ * 用户追加权限表单
+ */
+export interface UserPermsForm {
+  /** 追加的菜单 ID 集合（角色已含项由后端剔除） */
+  menuIds: string[];
+}
+
+/**
  * 修改手机表单
  */
 export interface MobileUpdateForm {

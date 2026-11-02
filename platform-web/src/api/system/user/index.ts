@@ -10,6 +10,8 @@ import type {
   PasswordVerifyForm,
   MobileUpdateForm,
   EmailUpdateForm,
+  UserPerms,
+  UserPermsForm,
 } from "./types";
 import type { ExcelResult, OptionItem, Page } from "@/api/common";
 
@@ -234,6 +236,27 @@ const UserAPI = {
     return request({
       url: `${USER_BASE_URL}/email`,
       method: "delete",
+      data,
+    });
+  },
+
+  /**
+   * 获取用户权限（角色定义菜单 + 用户追加菜单）
+   */
+  getUserPerms(id: string) {
+    return request<unknown, UserPerms>({
+      url: `${USER_BASE_URL}/${id}/perms`,
+      method: "get",
+    });
+  },
+
+  /**
+   * 更新用户追加权限
+   */
+  updateUserPerms(id: string, data: UserPermsForm) {
+    return request({
+      url: `${USER_BASE_URL}/${id}/perms`,
+      method: "put",
       data,
     });
   },

@@ -157,6 +157,7 @@ public class MenuService {
         Set<Long> ids = new LinkedHashSet<>();
         collectSubtree(rows, id, ids);
         jdbc.update("DELETE FROM sys_role_menu WHERE menu_id IN (:ids)", Map.of("ids", ids));
+        jdbc.update("DELETE FROM sys_user_menu WHERE menu_id IN (:ids)", Map.of("ids", ids));
         jdbc.update("DELETE FROM sys_menu WHERE id IN (:ids)", Map.of("ids", ids));
     }
 
@@ -169,6 +170,21 @@ public class MenuService {
                             + "JOIN sys_user_role ur ON ur.role_id = r.id "
                             + "WHERE ur.user_id = :userId AND r.status = 1",
                     Map.of("userId", loginUser.userId()), Long.class));
+            // 用户级追加权限并入，并沿 parent_id 向上补全祖先链，保证路由树完整
+            Set<Long> extraIds = new LinkedHashSet<>(jdbc.queryForList(
+                    "SELECT menu_id FROM sys_user_menu WHERE user_id = :userId",
+                    Map.of("userId", loginUser.userId()), Long.class));
+            Map<Long, Long> parentMap = new HashMap<>();
+            rows.forEach(row -> parentMap.put(row.id(), row.parentId()));
+            for (Long extraId : extraIds) {
+                if (!allowed.add(extraId)) {
+                    continue;
+                }
+                Long parent = parentMap.get(extraId);
+                while (parent != null && parent != 0L && allowed.add(parent)) {
+                    parent = parentMap.get(parent);
+                }
+            }
             rows = rows.stream().filter(row -> allowed.contains(row.id())).toList();
         }
         List<MenuRow> routeRows = rows.stream()

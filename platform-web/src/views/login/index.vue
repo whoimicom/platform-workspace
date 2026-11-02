@@ -143,7 +143,7 @@
           </transition>
         </div>
 
-        <div class="login-footer">Copyright © 2021-2026 whoimi.tech</div>
+        <div class="login-footer">Copyright © 2026 whoimi.com</div>
       </div>
     </div>
   </div>

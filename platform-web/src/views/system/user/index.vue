@@ -153,7 +153,7 @@
             <el-table-column label="手机号码" prop="mobile" width="130" />
             <el-table-column label="邮箱" prop="email" min-width="180" show-overflow-tooltip />
             <el-table-column label="创建时间" prop="createTime" width="160" show-overflow-tooltip />
-            <el-table-column label="操作" fixed="right" width="200">
+            <el-table-column label="操作" fixed="right" width="240">
               <template #default="scope">
                 <TableActions :actions="getUserActions(scope.row as UserItem)" />
               </template>
@@ -294,17 +294,79 @@
       </template>
     </el-dialog>
 
+    <!-- 分配权限 -->
+    <el-dialog
+      v-model="userPermsDialog.visible"
+      title="分配权限"
+      :width="userPermsDialogWidth"
+      append-to-body
+      @closed="resetUserPermsDialog"
+    >
+      <div class="mb-16px">
+        用户：{{ userPermsDialog.nickname || userPermsDialog.username || "-" }}
+        <span v-if="userPermsDialog.nickname && userPermsDialog.username">
+          （{{ userPermsDialog.username }}）
+        </span>
+      </div>
+
+      <div class="user-perm__tips">
+        勾选「角色」样式的权限来自用户所属角色，不可在此取消；其余勾选项为该用户单独追加的权限
+      </div>
+
+      <div v-loading="userPermsDialog.loading" class="user-perm__tree">
+        <el-tree
+          ref="userPermsTreeRef"
+          :data="userPermsTreeData"
+          node-key="id"
+          show-checkbox
+          check-strictly
+          default-expand-all
+          highlight-current
+          :expand-on-click-node="false"
+          @check="handleUserPermsCheck"
+        >
+          <template #default="{ data }">
+            <span class="user-perm__node" :class="resolveUserPermNodeClass(data)">
+              <span class="user-perm__label">{{ data.label }}</span>
+              <el-tag v-if="isRolePermNode(data)" size="small" type="info">角色</el-tag>
+              <el-tag v-else-if="isExtraPermNode(data)" size="small" type="success">追加</el-tag>
+            </span>
+          </template>
+        </el-tree>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button
+            type="primary"
+            :loading="userPermsDialog.saving"
+            @click="handleUserPermsSubmit"
+          >
+            确 定
+          </el-button>
+          <el-button @click="closeUserPermsDialog">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <!-- 用户导入 -->
     <UserImportDialog v-model="importDialogVisible" @import-success="handleQuery()" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+  type TreeInstance,
+} from "element-plus";
 
 import UserAPI from "@/api/system/user";
 import OrgAPI from "@/api/system/org";
 import RoleAPI from "@/api/system/role";
+import MenuAPI from "@/api/system/menu";
 import type { UserForm, UserItem, UserQuery } from "@/api/system/user";
 import type { OptionItem } from "@/api/common";
 import { useAppStore, useUserStore } from "@/stores";
@@ -378,6 +440,42 @@ const resetPasswordDialog = reactive({
 const resetPasswordForm = reactive<ResetPasswordForm>({
   password: "",
 });
+
+/**
+ * 分配权限树节点（由菜单 OptionItem 树适配而来）
+ */
+interface PermTreeNode {
+  id: string;
+  label: string;
+  children?: PermTreeNode[];
+  disabled?: boolean;
+}
+
+const userPermsTreeRef = ref<TreeInstance>();
+
+const userPermsDialog = reactive({
+  visible: false,
+  userId: "",
+  username: "",
+  nickname: "",
+  loading: false,
+  saving: false,
+});
+
+const userPermsDialogWidth = computed(() =>
+  appStore.device === DeviceEnum.DESKTOP ? "560px" : "90%"
+);
+
+const userPermsTreeData = ref<PermTreeNode[]>([]);
+
+/** 角色定义的菜单 ID 集合（勾选后不可在此取消） */
+const userPermsRoleMenuIds = ref<Set<string>>(new Set());
+
+/** 当前勾选的菜单 ID 集合，用于节点「角色/追加」样式区分 */
+const userPermsCheckedIds = ref<Set<string>>(new Set());
+
+/** 菜单 ID → 父菜单 ID 映射，用于向上收集祖先菜单 */
+const userPermsParentIds = ref<Map<string, string>>(new Map());
 
 const orgOptions = ref<OptionItem[]>([]);
 const roleOptions = ref<OptionItem[]>([]);
@@ -480,6 +578,9 @@ function getUserActions(row: UserItem): TableAction[] {
   const actions: TableAction[] = [];
   if (hasPerm("sys:user:update")) {
     actions.push({ key: "edit", label: "编辑", run: () => handleEditClick(row.id) });
+  }
+  if (hasPerm("sys:user:perm")) {
+    actions.push({ key: "perm", label: "权限", run: () => openUserPermsDialog(row) });
   }
   if (hasPerm("sys:user:delete")) {
     actions.push({
@@ -641,6 +742,174 @@ const handleResetPasswordSubmit = useDebounceFn(async () => {
   }
 }, 300);
 
+/**
+ * 将菜单 OptionItem 树适配为权限树数据，角色定义的菜单节点标记为禁用（不可取消勾选）
+ *
+ * @param options 菜单选项树
+ * @param roleMenuIds 角色定义的菜单 ID 集合
+ */
+function toPermTreeData(options: OptionItem[], roleMenuIds: Set<string>): PermTreeNode[] {
+  return options.map((option) => {
+    const id = String(option.value);
+    return {
+      id,
+      label: option.label,
+      children: option.children?.length
+        ? toPermTreeData(option.children, roleMenuIds)
+        : undefined,
+      disabled: roleMenuIds.has(id),
+    };
+  });
+}
+
+/**
+ * 构建菜单 ID → 父菜单 ID 的映射
+ *
+ * @param options 菜单选项树
+ */
+function buildMenuParentIdMap(options: OptionItem[]): Map<string, string> {
+  const parentIdMap = new Map<string, string>();
+  const walk = (items: OptionItem[], parentId?: string) => {
+    items.forEach((item) => {
+      const id = String(item.value);
+      if (parentId) {
+        parentIdMap.set(id, parentId);
+      }
+      if (item.children?.length) {
+        walk(item.children, id);
+      }
+    });
+  };
+  walk(options);
+  return parentIdMap;
+}
+
+/**
+ * 打开分配权限弹窗，并行加载用户权限与菜单树
+ *
+ * @param row 用户行数据
+ */
+async function openUserPermsDialog(row: UserItem): Promise<void> {
+  userPermsDialog.userId = row.id;
+  userPermsDialog.username = row.username ?? "";
+  userPermsDialog.nickname = row.nickname ?? "";
+  userPermsDialog.visible = true;
+  userPermsDialog.loading = true;
+
+  try {
+    const [perms, menuOptions] = await Promise.all([
+      UserAPI.getUserPerms(row.id),
+      MenuAPI.getOptions(),
+    ]);
+    const roleMenuIds = new Set(perms.roleMenuIds.map(String));
+    userPermsRoleMenuIds.value = roleMenuIds;
+    userPermsParentIds.value = buildMenuParentIdMap(menuOptions);
+    userPermsTreeData.value = toPermTreeData(menuOptions, roleMenuIds);
+    userPermsCheckedIds.value = new Set([...roleMenuIds, ...perms.extraMenuIds.map(String)]);
+
+    await nextTick();
+    userPermsTreeRef.value?.setCheckedKeys([...userPermsCheckedIds.value]);
+  } finally {
+    userPermsDialog.loading = false;
+  }
+}
+
+/**
+ * 关闭分配权限弹窗
+ */
+function closeUserPermsDialog(): void {
+  userPermsDialog.visible = false;
+}
+
+/**
+ * 重置分配权限弹窗状态
+ */
+function resetUserPermsDialog(): void {
+  userPermsTreeData.value = [];
+  userPermsRoleMenuIds.value = new Set();
+  userPermsCheckedIds.value = new Set();
+  userPermsParentIds.value = new Map();
+  userPermsDialog.userId = "";
+  userPermsDialog.username = "";
+  userPermsDialog.nickname = "";
+}
+
+/**
+ * 勾选变化时同步勾选集合，驱动节点「角色/追加」样式区分
+ */
+function handleUserPermsCheck(): void {
+  const checkedKeys = userPermsTreeRef.value?.getCheckedKeys() ?? [];
+  userPermsCheckedIds.value = new Set(checkedKeys.map(String));
+}
+
+/**
+ * 节点是否为角色定义的权限（勾选中且来自角色）
+ *
+ * @param node 权限树节点
+ */
+function isRolePermNode(node: PermTreeNode): boolean {
+  return userPermsCheckedIds.value.has(node.id) && userPermsRoleMenuIds.value.has(node.id);
+}
+
+/**
+ * 节点是否为用户追加的权限（勾选中且不属于角色）
+ *
+ * @param node 权限树节点
+ */
+function isExtraPermNode(node: PermTreeNode): boolean {
+  return userPermsCheckedIds.value.has(node.id) && !userPermsRoleMenuIds.value.has(node.id);
+}
+
+/**
+ * 根据勾选状态返回节点样式类
+ *
+ * @param node 权限树节点
+ */
+function resolveUserPermNodeClass(node: PermTreeNode): Record<string, boolean> {
+  return {
+    "is-role": isRolePermNode(node),
+    "is-extra": isExtraPermNode(node),
+  };
+}
+
+/**
+ * 计算需要提交的追加菜单 ID：勾选项剔除角色已含项，并向上补全祖先菜单保证路由树完整
+ */
+function resolveExtraMenuIds(): string[] {
+  const checkedKeys = userPermsTreeRef.value?.getCheckedKeys() ?? [];
+  const extraMenuIds = new Set<string>();
+  checkedKeys
+    .map((id) => String(id))
+    .filter((id) => !userPermsRoleMenuIds.value.has(id))
+    .forEach((id) => {
+      extraMenuIds.add(id);
+      let parentId = userPermsParentIds.value.get(id);
+      while (parentId) {
+        extraMenuIds.add(parentId);
+        parentId = userPermsParentIds.value.get(parentId);
+      }
+    });
+  return Array.from(extraMenuIds);
+}
+
+/**
+ * 校验并提交用户追加权限。
+ */
+const handleUserPermsSubmit = useDebounceFn(async () => {
+  if (!userPermsDialog.userId) return;
+
+  userPermsDialog.saving = true;
+  try {
+    await UserAPI.updateUserPerms(userPermsDialog.userId, {
+      menuIds: resolveExtraMenuIds(),
+    });
+    ElMessage.success("权限保存成功");
+    closeUserPermsDialog();
+  } finally {
+    userPermsDialog.saving = false;
+  }
+}, 300);
+
 onMounted(() => {
   handleQuery();
 });
@@ -664,6 +933,37 @@ onMounted(() => {
     color: var(--el-color-primary);
     background: var(--el-color-primary-light-9);
     border-radius: 50%;
+  }
+}
+
+.user-perm__tips {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--el-text-color-secondary);
+  background-color: var(--el-color-primary-light-9);
+  border-radius: 4px;
+}
+
+.user-perm__tree {
+  min-height: 160px;
+  max-height: 380px;
+  overflow: auto;
+}
+
+.user-perm__node {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+
+  &.is-role .user-perm__label {
+    color: var(--el-text-color-secondary);
+  }
+
+  &.is-extra .user-perm__label {
+    font-weight: 500;
+    color: var(--el-color-primary);
   }
 }
 </style>

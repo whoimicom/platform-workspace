@@ -35,6 +35,14 @@ public final class UserDtos {
     public record PasswordResetRequest(String password) {
     }
 
+    /** 用户权限分配：角色定义的菜单集 + 用户追加的菜单集。 */
+    public record UserPerms(List<String> roleMenuIds, List<String> extraMenuIds) {
+    }
+
+    /** 用户追加权限保存请求：menuIds 为追加部分（后端会再次剔除角色已含项）。 */
+    public record UserPermsForm(List<String> menuIds) {
+    }
+
     /**
      * 用户分页查询参数（查询串绑定使用）。
      */
