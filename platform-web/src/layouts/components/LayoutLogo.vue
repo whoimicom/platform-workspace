@@ -13,7 +13,7 @@
 
 <script lang="ts" setup>
 import { appConfig } from "@/settings";
-import logo from "@/assets/images/logo.png";
+import logo from "@/assets/images/logo.svg";
 
 defineProps({
   collapse: {

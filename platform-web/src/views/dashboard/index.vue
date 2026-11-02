@@ -12,35 +12,6 @@
             <p class="dash-header__date">{{ currentDateStr }}</p>
           </div>
         </div>
-        <div class="dash-header__end">
-          <a
-            href="https://github.com/whoimicom/platform-workspace"
-            target="_blank"
-            title="GitHub"
-            class="quick-link"
-          >
-            <span class="i-svg:github" />
-            <span>GitHub</span>
-          </a>
-          <a
-            href="https://juejin.cn/post/7228990409909108793"
-            target="_blank"
-            title="文档"
-            class="quick-link"
-          >
-            <el-icon><Document /></el-icon>
-            <span>文档</span>
-          </a>
-          <a
-            href="https://www.bilibili.com/video/BV1eFUuYyEFj"
-            target="_blank"
-            title="视频"
-            class="quick-link"
-          >
-            <el-icon><VideoPlay /></el-icon>
-            <span>视频</span>
-          </a>
-        </div>
       </div>
     </section>
 
@@ -217,8 +188,6 @@ import {
   ArrowDown,
   Clock,
   CircleCheck,
-  Document,
-  VideoPlay,
 } from "@element-plus/icons-vue";
 
 const userStore = useUserStore();
@@ -581,40 +550,6 @@ $pad: 10px;
     width: 100%;
     height: 100%;
     object-fit: cover;
-  }
-}
-
-// Quick links
-.quick-link {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-  height: 30px;
-  padding: 0 10px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  text-decoration: none;
-  background: var(--el-fill-color-extra-light);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 6px;
-  transition:
-    color 0.15s,
-    background-color 0.15s,
-    border-color 0.15s;
-
-  .el-icon,
-  [class^="i-svg:"] {
-    width: 15px;
-    height: 15px;
-    font-size: 15px;
-    color: currentcolor;
-  }
-
-  &:hover {
-    color: var(--el-color-primary);
-    background: color-mix(in srgb, var(--el-color-primary) 7%, var(--el-bg-color-overlay));
-    border-color: color-mix(in srgb, var(--el-color-primary) 20%, var(--el-border-color-lighter));
   }
 }
 
@@ -1046,10 +981,6 @@ $pad: 10px;
   .dash-header__card {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .dash-header__end {
-    justify-content: flex-start;
   }
 }
 

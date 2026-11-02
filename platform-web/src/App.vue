@@ -16,6 +16,7 @@ import { useAppStore, useSettingsStore } from "@/stores";
 import { appConfig } from "@/settings";
 import { ThemeMode, ComponentSize } from "@/enums";
 import { useVersionCheck } from "@/composables/useVersionCheck";
+import { installChunkLoadRecovery } from "@/utils/chunk-recovery";
 
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();
@@ -31,8 +32,9 @@ const fontColor = computed(() => {
     ? "rgba(255, 255, 255, .15)"
     : "rgba(0, 0, 0, .15)";
 });
-// 初始化版本检查
+// 初始化版本检查与 chunk 失效自愈（开发环境由 HMR 处理，不启用）
 if (!import.meta.env.DEV) {
+  installChunkLoadRecovery();
   useVersionCheck(5 * 60_000);
 }
 </script>

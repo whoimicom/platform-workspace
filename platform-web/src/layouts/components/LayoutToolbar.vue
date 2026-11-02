@@ -16,6 +16,18 @@
       <div class="layout-toolbar__item">
         <NoticeCenter />
       </div>
+
+      <a
+        v-for="link in externalLinks"
+        :key="link.title"
+        class="layout-toolbar__item"
+        :href="link.href"
+        :title="link.title"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <div :class="`i-svg:${link.icon}`" />
+      </a>
     </template>
 
     <div class="layout-toolbar__item layout-toolbar__item--profile">
@@ -59,6 +71,16 @@ const route = useRoute();
 const router = useRouter();
 
 const isDesktop = computed(() => appStore.device === DeviceEnum.DESKTOP);
+
+/**
+ * 顶栏外链按钮配置：GitHub / 文档 / 视频
+ * 需要修改链接时改这里即可。
+ */
+const externalLinks = [
+  { title: "GitHub 仓库", icon: "github", href: "https://github.com/whoimicom/platform-workspace" },
+  { title: "使用文档", icon: "document", href: "https://github.com/whoimicom/platform-workspace" },
+  { title: "视频演示", icon: "video", href: "https://github.com/whoimicom/platform-workspace" },
+] as const;
 
 /**
  * 打开个人中心页面
@@ -129,6 +151,7 @@ function handleSettingsClick() {
     color: var(--layout-toolbar-color);
     text-align: center;
     cursor: pointer;
+    text-decoration: none;
     border-radius: 6px;
     transition:
       background-color 0.16s,

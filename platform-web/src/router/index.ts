@@ -1,5 +1,6 @@
 import type { App } from "vue";
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
+import { handleChunkLoadError } from "@/utils/chunk-recovery";
 
 /**
  * 布局组件，供各路由复用（懒加载）
@@ -79,6 +80,11 @@ const router = createRouter({
   routes: constantRoutes,
   // 刷新时，滚动条位置还原
   scrollBehavior: () => ({ left: 0, top: 0 }),
+});
+
+// 懒加载路由的 chunk 在版本更新后可能 404，交由自愈逻辑处理
+router.onError((error) => {
+  handleChunkLoadError(error instanceof Error ? error.message : String(error));
 });
 
 /**

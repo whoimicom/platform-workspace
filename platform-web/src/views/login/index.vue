@@ -161,7 +161,7 @@ import { useUserStore } from "@/stores";
 import { AuthStorage } from "@/utils/auth";
 import { appConfig } from "@/settings";
 import ResetPwd from "./components/ResetPwd.vue";
-import logo from "@/assets/images/logo.png";
+import logo from "@/assets/images/logo.svg";
 
 const userStore = useUserStore();
 const route = useRoute();
