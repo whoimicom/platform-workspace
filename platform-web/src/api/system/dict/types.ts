@@ -11,6 +11,11 @@ export interface DictTypeQuery extends PageQuery {
 }
 
 /**
+ * 字典类型：STATIC 静态（前端源码内置，不走网络）/ DYNAMIC 动态（数据库管理）
+ */
+export type DictTypeMode = "STATIC" | "DYNAMIC";
+
+/**
  * 字典分页对象
  */
 export interface DictTypeItem {
@@ -20,6 +25,8 @@ export interface DictTypeItem {
   name: string;
   /** 字典编码 */
   dictCode: string;
+  /** 字典类型 */
+  type: DictTypeMode;
   /** 状态(1:启用;0:禁用) */
   status: number;
 }
@@ -34,6 +41,8 @@ export interface DictTypeForm {
   name?: string;
   /** 字典编码 */
   dictCode?: string;
+  /** 字典类型 */
+  type?: DictTypeMode;
   /** 状态(1:启用;0:禁用) */
   status?: number;
   /** 备注 */
@@ -60,8 +69,10 @@ export interface DictItem {
   dictCode: string;
   /** 字典项标签 */
   label: string;
-  /** 字典项值 */
+  /** 字典项值（英文大写简写，如 M/F/U、ENABLED/DISABLED） */
   value: string;
+  /** 值描述（完整英文，仅管理显示） */
+  desc?: string;
   /** 状态(1:启用;0:禁用) */
   status: number;
   /** 排序 */
@@ -82,6 +93,8 @@ export interface DictItemForm {
   label?: string;
   /** 字典项值 */
   value?: string;
+  /** 值描述（完整英文，可选） */
+  desc?: string;
   /** 状态(1:启用;0:禁用) */
   status?: number;
   /** 排序 */
@@ -98,6 +111,8 @@ export interface DictItemOption {
   value: number | string;
   /** 字典项标签 */
   label: string;
+  /** 值描述（可选） */
+  desc?: string;
   /** 标签类型 */
   tagType?: "success" | "warning" | "info" | "primary" | "danger" | "";
 }

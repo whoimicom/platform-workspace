@@ -1,6 +1,7 @@
 import { store } from "@/stores";
 import DictAPI from "@/api/system/dict";
 import type { DictItemOption } from "@/api/system/dict";
+import { STATIC_DICTS, isStaticDict } from "@/constants/dicts";
 import { STORAGE_KEYS } from "@/constants";
 
 /**
@@ -18,9 +19,11 @@ export type DictChangeCallback = (message: DictChangeMessage) => void;
 
 /**
  * 管理字典缓存、失效标记和在途查询。
+ * 静态字典（gender/common_status 等）优先查 src/constants/dicts.ts，
+ * 命中则跳过网络请求，store 内部将其写入 dictCache 保持对调用方透明。
  */
 export const useDictStore = defineStore("dict", () => {
-  // 字典数据缓存
+  // 字典数据缓存（静态 / 动态统一写入，调用方无感知）
   const dictCache = useStorage<Record<string, DictItemOption[]>>(STORAGE_KEYS.DICT_CACHE, {});
 
   const pendingRequests = new Map<string, Promise<void>>();
@@ -30,10 +33,17 @@ export const useDictStore = defineStore("dict", () => {
   let cacheVersion = 0;
 
   /**
-   * 按需加载字典，同一编码只保留一个在途请求。
+   * 按需加载字典。静态字典直接从前端注册表取；
+   * 动态字典同一编码只保留一个在途请求。
    */
   const loadDictItems = async (dictCode: string) => {
     if (dictCache.value[dictCode]) return;
+
+    // 静态字典：命中注册表即直接存入缓存并返回，不触发网络
+    if (isStaticDict(dictCode)) {
+      dictCache.value[dictCode] = STATIC_DICTS[dictCode]!;
+      return;
+    }
 
     let request = pendingRequests.get(dictCode);
     if (!request) {
@@ -63,9 +73,14 @@ export const useDictStore = defineStore("dict", () => {
 
   /**
    * 复用字典缓存与在途请求，丢弃失效后的旧响应。
+   * 静态字典命中注册表时直接返回（可能未调用 loadDictItems）。
    */
   const getDictItems = (dictCode: string): DictItemOption[] => {
-    return dictCache.value[dictCode] || [];
+    if (dictCache.value[dictCode]) return dictCache.value[dictCode]!;
+    if (isStaticDict(dictCode)) {
+      return STATIC_DICTS[dictCode]!;
+    }
+    return [];
   };
 
   /**
@@ -80,12 +95,13 @@ export const useDictStore = defineStore("dict", () => {
 
   /**
    * 使指定字典失效，并通知正在展示该字典的页面。
+   * 静态字典不调用网络刷新，仅通知订阅方。
    */
   const invalidateDict = (dictCode: string) => {
     const wasLoaded = !!dictCache.value[dictCode] || pendingRequests.has(dictCode);
     dictVersions.set(dictCode, (dictVersions.get(dictCode) ?? 0) + 1);
     Reflect.deleteProperty(dictCache.value, dictCode);
-    if (wasLoaded) {
+    if (wasLoaded && !isStaticDict(dictCode)) {
       void loadDictItems(dictCode).catch(() => console.warn("[DictStore] 字典刷新失败"));
     }
     const message: DictChangeMessage = { dictCode };

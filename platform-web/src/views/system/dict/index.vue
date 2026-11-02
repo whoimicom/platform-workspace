@@ -29,10 +29,18 @@
               @click="handleTypeClick(row)"
             >
               <div class="dict-type__info">
-                <span class="dict-type__name" :title="row.name">
-                  <StatusDot :active="row.status === CommonStatus.ENABLED" />
-                  {{ row.name }}
-                </span>
+                <StatusDot :active="row.status === CommonStatus.ENABLED" />
+                <span class="dict-type__name" :title="row.name">{{ row.name }}</span>
+                <el-tag
+                  v-if="row.type === 'STATIC'"
+                  size="small"
+                  type="info"
+                  effect="plain"
+                  class="dict-type__tag"
+                >
+                  静态
+                </el-tag>
+                <span class="dict-type__sep">·</span>
                 <span class="dict-type__code" :title="row.dictCode">{{ row.dictCode }}</span>
               </div>
               <div class="dict-type__actions">
@@ -48,6 +56,7 @@
                   v-hasPerm="['sys:dict:delete']"
                   link
                   type="danger"
+                  :disabled="row.type === 'STATIC'"
                   @click.stop="handleDelete(row.id)"
                 >
                   <el-icon><Delete /></el-icon>
@@ -96,6 +105,7 @@
         :key="currentType.dictCode"
         :dict-code="currentType.dictCode"
         :dict-name="currentType.name"
+        :dict-type="currentType.type"
       />
       <el-card v-else class="page-content" shadow="never">
         <el-empty description="请先在左侧选择字典类型" />
@@ -115,6 +125,16 @@
 
         <el-form-item label="字典编码" prop="dictCode">
           <el-input v-model="formData.dictCode" placeholder="请输入字典编码" />
+        </el-form-item>
+
+        <el-form-item label="字典类型" prop="type">
+          <el-radio-group v-model="formData.type">
+            <el-radio value="DYNAMIC">动态（数据库管理）</el-radio>
+            <el-radio value="STATIC">静态（前端源码内置）</el-radio>
+          </el-radio-group>
+          <div v-if="formData.type === 'STATIC'" class="el-form-item__tips text-12px mt-1">
+            静态字典在前端 src/constants/dicts.ts 中定义，后端仅存元数据，字典项不可通过管理平台修改。
+          </div>
         </el-form-item>
 
         <el-form-item label="状态">
@@ -216,6 +236,7 @@ const dialogState = reactive({
 });
 
 const initialFormData: DictTypeForm = {
+  type: "DYNAMIC",
   status: CommonStatus.ENABLED,
 };
 
@@ -349,6 +370,14 @@ onMounted(() => {
   min-height: 0;
   padding: 12px;
 
+  &__tag {
+    flex-shrink: 0;
+    height: 18px;
+    line-height: 16px;
+    padding: 0 5px;
+    font-size: 11px;
+  }
+
   &__list {
     flex: 1 1 auto;
     min-height: 0;
@@ -358,10 +387,11 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 7px 8px;
+    padding: 6px 10px;
+    margin-bottom: 2px;
     cursor: pointer;
     border-radius: 6px;
-    transition: background-color 0.15s;
+    transition: background-color 0.15s, box-shadow 0.15s;
 
     &:hover {
       background-color: var(--el-fill-color-light);
@@ -369,45 +399,42 @@ onMounted(() => {
 
     &.is-active {
       background-color: var(--el-color-primary-light-9);
+      box-shadow: inset 2px 0 0 var(--el-color-primary);
     }
   }
 
   &__info {
     display: flex;
     flex: 1 1 auto;
-    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
-    line-height: 1.35;
-  }
-
-  &__dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    margin-right: 6px;
-    vertical-align: middle;
-    background-color: var(--el-color-success);
-    border-radius: 50%;
-
-    &.is-stopped {
-      background-color: var(--el-text-color-placeholder);
-    }
+    line-height: 1.4;
   }
 
   &__name {
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--el-text-color-primary);
     white-space: nowrap;
   }
 
+  &__sep {
+    flex-shrink: 0;
+    color: var(--el-text-color-placeholder);
+    font-size: 12px;
+    line-height: 1;
+  }
+
   &__code {
+    flex-shrink: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--el-text-color-secondary);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     white-space: nowrap;
   }
 
@@ -416,12 +443,16 @@ onMounted(() => {
     color: var(--el-color-primary);
   }
 
+  &__item.is-active &__code {
+    color: var(--el-color-primary-light-3);
+  }
+
   &__actions {
     flex-shrink: 0;
-    margin-left: 4px;
+    margin-left: 6px;
 
     .el-button + .el-button {
-      margin-left: 4px;
+      margin-left: 2px;
     }
 
     .el-button {

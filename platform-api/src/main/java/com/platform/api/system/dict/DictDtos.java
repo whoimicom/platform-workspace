@@ -14,18 +14,18 @@ public final class DictDtos {
     private DictDtos() {
     }
 
-    public record DictTypeItem(String id, String name, String dictCode, Integer status) {
+    public record DictTypeItem(String id, String name, String dictCode, String type, Integer status) {
     }
 
-    public record DictTypeForm(String id, String name, String dictCode, Integer status, String remark) {
+    public record DictTypeForm(String id, String name, String dictCode, String type, Integer status, String remark) {
     }
 
-    public record DictItem(String id, String dictCode, String label, String value, Integer status,
-                           Integer sort, String tagType) {
+    public record DictItem(String id, String dictCode, String label, String value, String desc,
+                           Integer status, Integer sort, String tagType) {
     }
 
-    public record DictItemForm(String id, String dictCode, String label, String value, Integer status,
-                               Integer sort, String tagType) {
+    public record DictItemForm(String id, String dictCode, String label, String value, String desc,
+                               Integer status, Integer sort, String tagType) {
     }
 
     public record DictItemOption(String value, String label, String tagType) {

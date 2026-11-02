@@ -28,6 +28,7 @@ public class DictService {
             String.valueOf(rs.getLong("id")),
             rs.getString("name"),
             rs.getString("dict_code"),
+            rs.getString("type"),
             JdbcUtil.getInt(rs, "status"));
 
     private static final RowMapper<DictDtos.DictItem> DICT_ITEM_MAPPER = (rs, rowNum) -> new DictDtos.DictItem(
@@ -35,14 +36,15 @@ public class DictService {
             rs.getString("dict_code"),
             rs.getString("label"),
             rs.getString("value"),
+            rs.getString("desc"),
             JdbcUtil.getInt(rs, "status"),
             JdbcUtil.getInt(rs, "sort"),
             rs.getString("tag_type"));
 
-    private static final String DICT_TYPE_BASE_SELECT = "SELECT d.id, d.name, d.dict_code, d.status FROM sys_dict d";
+    private static final String DICT_TYPE_BASE_SELECT = "SELECT d.id, d.name, d.dict_code, d.type, d.status FROM sys_dict d";
 
     private static final String DICT_ITEM_BASE_SELECT =
-            "SELECT id, dict_code, label, value, status, sort, tag_type FROM sys_dict_item";
+            "SELECT id, dict_code, label, value, item_desc AS `desc`, status, sort, tag_type FROM sys_dict_item";
 
     private final NamedParameterJdbcTemplate jdbc;
     private final DynamicQueryExecutor executor;
@@ -69,12 +71,13 @@ public class DictService {
 
     public DictDtos.DictTypeForm typeForm(Long id) {
         List<DictDtos.DictTypeForm> rows = jdbc.query(
-                "SELECT id, name, dict_code, status, remark FROM sys_dict WHERE id = :id",
+                "SELECT id, name, dict_code, type, status, remark FROM sys_dict WHERE id = :id",
                 Map.of("id", id),
                 (rs, rowNum) -> new DictDtos.DictTypeForm(
                         String.valueOf(rs.getLong("id")),
                         rs.getString("name"),
                         rs.getString("dict_code"),
+                        rs.getString("type"),
                         JdbcUtil.getInt(rs, "status"),
                         rs.getString("remark")));
         if (rows.isEmpty()) {
@@ -90,14 +93,15 @@ public class DictService {
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("name", form.name().trim());
         params.addValue("dictCode", form.dictCode().trim());
+        params.addValue("type", normalizeType(form.type()));
         params.addValue("status", form.status() == null ? 1 : form.status());
         params.addValue("remark", form.remark());
         params.addValue("createTime", LocalDateTime.now());
         params.addValue("updateTime", LocalDateTime.now());
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update("INSERT INTO sys_dict (name, dict_code, status, remark, create_time, update_time) "
-                        + "VALUES (:name, :dictCode, :status, :remark, :createTime, :updateTime)",
+        jdbc.update("INSERT INTO sys_dict (name, dict_code, type, status, remark, create_time, update_time) "
+                        + "VALUES (:name, :dictCode, :type, :status, :remark, :createTime, :updateTime)",
                 params, keyHolder, new String[]{"id"});
     }
 
@@ -108,12 +112,13 @@ public class DictService {
         Map<String, Object> params = new HashMap<>();
         params.put("name", form.name().trim());
         params.put("dictCode", form.dictCode().trim());
+        params.put("type", normalizeType(form.type()));
         params.put("status", form.status() == null ? 1 : form.status());
         params.put("remark", form.remark());
         params.put("updateTime", LocalDateTime.now());
         params.put("id", id);
-        int updated = jdbc.update("UPDATE sys_dict SET name = :name, dict_code = :dictCode, status = :status, "
-                + "remark = :remark, update_time = :updateTime WHERE id = :id", params);
+        int updated = jdbc.update("UPDATE sys_dict SET name = :name, dict_code = :dictCode, type = :type, "
+                + "status = :status, remark = :remark, update_time = :updateTime WHERE id = :id", params);
         if (updated == 0) {
             throw BusinessException.notFound("字典不存在");
         }
@@ -153,7 +158,7 @@ public class DictService {
 
     public DictDtos.DictItemForm itemForm(String dictCode, Long id) {
         List<DictDtos.DictItemForm> rows = jdbc.query(
-                "SELECT id, dict_code, label, value, status, sort, tag_type FROM sys_dict_item "
+                "SELECT id, dict_code, label, value, item_desc AS `desc`, status, sort, tag_type FROM sys_dict_item "
                         + "WHERE dict_code = :dictCode AND id = :id",
                 Map.of("dictCode", dictCode, "id", id),
                 (rs, rowNum) -> new DictDtos.DictItemForm(
@@ -161,6 +166,7 @@ public class DictService {
                         rs.getString("dict_code"),
                         rs.getString("label"),
                         rs.getString("value"),
+                        rs.getString("desc"),
                         JdbcUtil.getInt(rs, "status"),
                         JdbcUtil.getInt(rs, "sort"),
                         rs.getString("tag_type")));
@@ -171,36 +177,40 @@ public class DictService {
     }
 
     public void createItem(String dictCode, DictDtos.DictItemForm form) {
+        assertMutable(dictCode);
         validateItem(form, dictCode, null);
 
         Map<String, Object> params = new HashMap<>();
         params.put("dictCode", dictCode);
         params.put("label", form.label().trim());
         params.put("value", form.value().trim());
+        params.put("desc", form.desc() == null ? null : form.desc().trim());
         params.put("status", form.status() == null ? 1 : form.status());
         params.put("sort", form.sort() == null ? 1 : form.sort());
         params.put("tagType", form.tagType());
         params.put("createTime", LocalDateTime.now());
         params.put("updateTime", LocalDateTime.now());
-        jdbc.update("INSERT INTO sys_dict_item (dict_code, label, value, status, sort, tag_type, "
-                + "create_time, update_time) VALUES (:dictCode, :label, :value, :status, :sort, :tagType, "
+        jdbc.update("INSERT INTO sys_dict_item (dict_code, label, value, item_desc, status, sort, tag_type, "
+                + "create_time, update_time) VALUES (:dictCode, :label, :value, :desc, :status, :sort, :tagType, "
                 + ":createTime, :updateTime)", params);
     }
 
     public void updateItem(String dictCode, Long id, DictDtos.DictItemForm form) {
+        assertMutable(dictCode);
         validateItem(form, dictCode, id);
 
         Map<String, Object> params = new HashMap<>();
         params.put("label", form.label().trim());
         params.put("value", form.value().trim());
+        params.put("desc", form.desc() == null ? null : form.desc().trim());
         params.put("status", form.status() == null ? 1 : form.status());
         params.put("sort", form.sort() == null ? 1 : form.sort());
         params.put("tagType", form.tagType());
         params.put("updateTime", LocalDateTime.now());
         params.put("dictCode", dictCode);
         params.put("id", id);
-        int updated = jdbc.update("UPDATE sys_dict_item SET label = :label, value = :value, status = :status, "
-                + "sort = :sort, tag_type = :tagType, update_time = :updateTime "
+        int updated = jdbc.update("UPDATE sys_dict_item SET label = :label, value = :value, item_desc = :desc, "
+                + "status = :status, sort = :sort, tag_type = :tagType, update_time = :updateTime "
                 + "WHERE dict_code = :dictCode AND id = :id", params);
         if (updated == 0) {
             throw BusinessException.notFound("字典项不存在");
@@ -208,6 +218,7 @@ public class DictService {
     }
 
     public void deleteItems(String dictCode, String ids) {
+        assertMutable(dictCode);
         List<Long> idList = IdUtils.parse(ids);
         if (idList.isEmpty()) {
             throw BusinessException.badRequest("请选择要删除的字典项");
@@ -257,6 +268,26 @@ public class DictService {
         Long count = jdbc.queryForObject(sql, params, Long.class);
         if (count != null && count > 0) {
             throw BusinessException.badRequest("字典编码已存在");
+        }
+    }
+
+    private String normalizeType(String type) {
+        if (type == null || type.isBlank()) {
+            return "DYNAMIC";
+        }
+        String normalized = type.trim().toUpperCase();
+        if (!normalized.equals("STATIC") && !normalized.equals("DYNAMIC")) {
+            throw BusinessException.badRequest("字典类型仅支持 STATIC / DYNAMIC");
+        }
+        return normalized;
+    }
+
+    private void assertMutable(String dictCode) {
+        List<String> types = jdbc.queryForList(
+                "SELECT type FROM sys_dict WHERE dict_code = :dictCode",
+                Map.of("dictCode", dictCode), String.class);
+        if (!types.isEmpty() && "STATIC".equalsIgnoreCase(types.get(0))) {
+            throw BusinessException.forbidden("静态字典不允许修改，请在前端源码中维护");
         }
     }
 }

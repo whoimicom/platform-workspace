@@ -9,21 +9,31 @@
           clearable
           @keyup.enter="handleQuery"
         />
-        <el-button type="primary" @click="handleQuery">搜索</el-button>
-        <el-button @click="handleResetQuery">重置</el-button>
+        <el-button type="primary" :disabled="isStatic" @click="handleQuery">搜索</el-button>
+        <el-button :disabled="isStatic" @click="handleResetQuery">重置</el-button>
       </div>
       <div class="flex items-center gap-2">
-        <el-button v-hasPerm="['sys:dict-item:create']" type="primary" @click="handleCreateClick()">
-          新增
-        </el-button>
-        <el-button
-          v-hasPerm="['sys:dict-item:delete']"
-          type="danger"
-          :disabled="!hasSelection"
-          @click="handleDelete()"
-        >
-          删除
-        </el-button>
+        <el-alert
+          v-if="isStatic"
+          title="静态字典在前端 src/constants/dicts.ts 中维护，字典项不可通过管理平台修改"
+          type="info"
+          show-icon
+          :closable="false"
+          class="flex-1 min-w-0"
+        />
+        <template v-else>
+          <el-button v-hasPerm="['sys:dict-item:create']" type="primary" @click="handleCreateClick()">
+            新增
+          </el-button>
+          <el-button
+            v-hasPerm="['sys:dict-item:delete']"
+            type="danger"
+            :disabled="!hasSelection"
+            @click="handleDelete()"
+          >
+            删除
+          </el-button>
+        </template>
         <el-tooltip content="刷新" placement="top">
           <el-button class="page-icon-btn" @click="fetchData">
             <el-icon><Refresh /></el-icon>
@@ -49,7 +59,13 @@
       >
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="字典标签" prop="label" show-overflow-tooltip />
-        <el-table-column label="字典值" prop="value" show-overflow-tooltip />
+        <el-table-column label="字典值" prop="value" width="140" show-overflow-tooltip />
+        <el-table-column label="描述" prop="desc" show-overflow-tooltip>
+          <template #default="scope">
+            <span v-if="scope.row.desc" class="dict-item-panel__desc">{{ scope.row.desc }}</span>
+            <span v-else class="dict-item-panel__plain">—</span>
+          </template>
+        </el-table-column>
         <el-table-column label="标签类型" align="center" width="120">
           <template #default="scope">
             <el-tag v-if="scope.row.tagType" :type="scope.row.tagType">
@@ -68,7 +84,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column fixed="right" label="操作" align="center" width="160">
+        <el-table-column fixed="right" label="操作" align="center" width="160" v-if="!isStatic">
           <template #default="scope">
             <el-button
               v-hasPerm="['sys:dict-item:update']"
@@ -113,7 +129,13 @@
         <el-input v-model="formData.label" placeholder="请输入字典标签" />
       </el-form-item>
       <el-form-item label="字典项值" prop="value">
-        <el-input v-model="formData.value" placeholder="请输入字典值" />
+        <el-input v-model="formData.value" placeholder="请输入字典值（如 M / ENABLED）" />
+      </el-form-item>
+      <el-form-item label="描述">
+        <el-input
+          v-model="formData.desc"
+          placeholder="完整英文描述，如 male / enabled（可选，仅管理显示）"
+        />
       </el-form-item>
       <el-form-item label="状态">
         <el-radio-group v-model="formData.status">
@@ -196,7 +218,14 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  /** 字典类型：STATIC 静态 / DYNAMIC 动态 */
+  dictType: {
+    type: String,
+    default: "DYNAMIC",
+  },
 });
+
+const isStatic = computed(() => props.dictType === "STATIC");
 
 const dictStore = useDictStoreHook();
 
@@ -379,6 +408,12 @@ onMounted(() => {
 .dict-item-panel__plain {
   font-size: 13px;
   color: var(--el-text-color-placeholder);
+}
+
+.dict-item-panel__desc {
+  font-size: 12px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  color: var(--el-text-color-secondary);
 }
 
 .dict-item-panel__status {
