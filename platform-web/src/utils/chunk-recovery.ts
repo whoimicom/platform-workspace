@@ -1,8 +1,8 @@
-import { ElMessage } from "element-plus";
+import { promptAppUpdate } from "@/utils/version-prompt";
 
 /**
  * 版本更新后旧 index.html 引用的 chunk 已被删除，动态 import 会 404。
- * 这里捕获这类错误并静默刷新一次，避免用户停留在白屏或异常页面。
+ * 这里捕获这类错误并提示用户刷新，不静默自动刷新，避免打断当前操作。
  */
 
 /** 各浏览器动态 import 失败的报错特征 */
@@ -12,9 +12,6 @@ const CHUNK_ERROR_PATTERNS = [
   /error loading dynamically imported module/i, // Safari
   /Unable to preload CSS/i, // Vite 样式预加载失败
 ];
-
-/** 记录"该构建版本已重试过刷新"，防止资源确实不可用时无限刷新 */
-const RELOAD_FLAG_KEY = "app:chunk-reload-version";
 
 /**
  * 判断错误信息是否属于 chunk 加载失败
@@ -26,31 +23,13 @@ export function isChunkLoadError(message: string): boolean {
 }
 
 /**
- * 执行一次整页刷新，同一构建版本最多刷新一次
- *
- * @returns true 表示已触发刷新，false 表示本版本已重试过
- */
-function reloadOnceForNewBuild(): boolean {
-  const version = String(__APP_INFO__.buildTimestamp);
-  try {
-    if (sessionStorage.getItem(RELOAD_FLAG_KEY) === version) return false;
-    sessionStorage.setItem(RELOAD_FLAG_KEY, version);
-  } catch {
-    // sessionStorage 不可用（隐私模式）时直接放行一次刷新
-  }
-  window.location.reload();
-  return true;
-}
-
-/**
- * 统一处理 chunk 加载失败：能刷新则静默刷新，已重试过则提示用户手动处理
+ * 统一处理 chunk 加载失败：页面已不可用，强制提示刷新
  *
  * @param message 错误信息
  */
 export function handleChunkLoadError(message: string): void {
   if (!isChunkLoadError(message)) return;
-  if (reloadOnceForNewBuild()) return;
-  ElMessage.error("页面资源加载失败，请手动刷新后重试");
+  promptAppUpdate(true);
 }
 
 /**

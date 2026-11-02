@@ -1,16 +1,23 @@
-import { ElNotification } from "element-plus";
 import { onMounted, onUnmounted, ref } from "vue";
+import { promptAppUpdate } from "@/utils/version-prompt";
+
+/** 当前构建版本标识 */
+const CURRENT_VERSION = String(__APP_INFO__.buildTimestamp);
 
 /**
- * 轮询部署版本，并提示用户刷新页面。
+ * 低频检测部署版本，发现新版本后弹窗提醒用户刷新。
+ *
+ * 只在页面加载、重新回到前台和固定间隔时各检查一次，不做静默自动刷新，
+ * 由用户决定何时刷新，体验更可控。
+ *
+ * @param interval 轮询间隔，默认 10 分钟
  */
-export function useVersionCheck(interval = 60_000) {
+export function useVersionCheck(interval = 10 * 60_000) {
   const hasNewVersion = ref(false);
-  let notified = false;
-  const safeInterval = Math.max(10_000, interval);
+  let timer: ReturnType<typeof setInterval> | undefined;
 
   /**
-   * 查询部署版本并更新升级提示。
+   * 查询部署版本，版本不一致时提示刷新
    */
   const checkVersion = async () => {
     try {
@@ -22,40 +29,18 @@ export function useVersionCheck(interval = 60_000) {
       });
       if (!res.ok) return; // 非核心功能，网络异常不影响正常使用
 
-      const data = await res.json();
-      if (data.version && data.version !== __APP_INFO__.buildTimestamp) {
+      const data = (await res.json()) as { version?: number | string };
+      if (data.version && String(data.version) !== CURRENT_VERSION) {
         hasNewVersion.value = true;
-        showUpdateNotice();
+        promptAppUpdate();
       }
-    } catch (e) {
-      console.warn("版本检测失败", e);
+    } catch (error) {
+      console.warn("版本检测失败", error);
     }
   };
 
   /**
-   * 提示新版本，已有通知时不重复显示。
-   */
-  const showUpdateNotice = () => {
-    if (notified) return;
-    notified = true;
-
-    // 使用非阻塞通知，避免中断当前操作。
-    ElNotification({
-      title: "🎉 发现新版本",
-      message: "系统已更新，点击刷新以获取最新功能",
-      duration: 0, // 不自动关闭
-      position: "bottom-right",
-      onClick: () => window.location.reload(),
-      onClose: () => {
-        notified = false;
-      },
-      customClass: "version-update-notice",
-    });
-  };
-
-  let timer: ReturnType<typeof setInterval>;
-  /**
-   * 页面恢复可见时立即检查部署版本。
+   * 页面重新可见时立即检查
    */
   const handleVisibilityChange = () => {
     if (!document.hidden) checkVersion();
@@ -63,7 +48,7 @@ export function useVersionCheck(interval = 60_000) {
 
   onMounted(() => {
     checkVersion();
-    timer = setInterval(checkVersion, safeInterval);
+    timer = setInterval(checkVersion, Math.max(60_000, interval));
     document.addEventListener("visibilitychange", handleVisibilityChange);
   });
 

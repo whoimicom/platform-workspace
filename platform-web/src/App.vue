@@ -32,9 +32,9 @@ const fontColor = computed(() => {
     ? "rgba(255, 255, 255, .15)"
     : "rgba(0, 0, 0, .15)";
 });
-// 初始化版本检查与 chunk 失效自愈（开发环境由 HMR 处理，不启用）
+// 初始化版本检查与 chunk 失效提示（开发环境由 HMR 处理，不启用）
 if (!import.meta.env.DEV) {
   installChunkLoadRecovery();
-  useVersionCheck(5 * 60_000);
+  useVersionCheck();
 }
 </script>
