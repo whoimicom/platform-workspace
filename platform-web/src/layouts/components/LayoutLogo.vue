@@ -2,7 +2,7 @@
   <div class="layout-logo">
     <transition enter-active-class="logo-fade-enter-active">
       <router-link :key="+collapse" class="wh-full flex-center" to="/">
-        <img :src="logo" class="w20px h20px" />
+        <img :src="logo" alt="logo" width="20" height="20" class="layout-logo__img" />
         <span v-if="!collapse" class="layout-logo__title">
           {{ appConfig.title }}
         </span>
@@ -28,6 +28,13 @@ defineProps({
   width: 100%;
   height: $navbar-height;
   background-color: $sidebar-logo-background;
+
+  // 尺寸与 HTML width/height 属性保持一致，避免样式未生效时按 SVG 固有尺寸渲染
+  &__img {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+  }
 
   &__title {
     flex-shrink: 0;
