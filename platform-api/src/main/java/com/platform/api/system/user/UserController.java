@@ -36,8 +36,9 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("@perm.has('sys:user:list')")
-    public ResultInfo<Page<UserDtos.UserItem>> page(UserDtos.UserQuery query) {
-        return ResultInfo.ok(userService.page(query));
+    public ResultInfo<Page<UserDtos.UserItem>> page(UserDtos.UserQuery query,
+                                                    @AuthenticationPrincipal LoginUser loginUser) {
+        return ResultInfo.ok(userService.page(query, loginUser));
     }
 
     @GetMapping("/options")
@@ -47,43 +48,49 @@ public class UserController {
 
     @GetMapping("/{id}/form")
     @PreAuthorize("@perm.has('sys:user:list')")
-    public ResultInfo<UserDtos.UserForm> form(@PathVariable Long id) {
-        return ResultInfo.ok(userService.form(id));
+    public ResultInfo<UserDtos.UserForm> form(@PathVariable Long id,
+                                              @AuthenticationPrincipal LoginUser loginUser) {
+        return ResultInfo.ok(userService.form(id, loginUser));
     }
 
     @PostMapping
     @PreAuthorize("@perm.has('sys:user:create')")
-    public ResultInfo<Void> create(@RequestBody UserDtos.UserForm form) {
-        userService.create(form);
+    public ResultInfo<Void> create(@RequestBody UserDtos.UserForm form,
+                                   @AuthenticationPrincipal LoginUser loginUser) {
+        userService.create(form, loginUser);
         return ResultInfo.ok();
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@perm.has('sys:user:update')")
-    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody UserDtos.UserForm form) {
-        userService.update(id, form);
+    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody UserDtos.UserForm form,
+                                   @AuthenticationPrincipal LoginUser loginUser) {
+        userService.update(id, form, loginUser);
         return ResultInfo.ok();
     }
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("@perm.has('sys:user:update')")
-    public ResultInfo<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
-        userService.updateStatus(id, status);
+    public ResultInfo<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status,
+                                         @AuthenticationPrincipal LoginUser loginUser) {
+        userService.updateStatus(id, status, loginUser);
         return ResultInfo.ok();
     }
 
     @PutMapping("/{id}/password/reset")
     @PreAuthorize("@perm.has('sys:user:reset-password')")
     public ResultInfo<Void> resetPassword(@PathVariable Long id,
-                                         @RequestBody UserDtos.PasswordResetRequest request) {
-        userService.resetPassword(id, request.password());
+                                         @RequestBody UserDtos.PasswordResetRequest request,
+                                         @AuthenticationPrincipal LoginUser loginUser) {
+        userService.resetPassword(id, request.password(), loginUser);
         return ResultInfo.ok();
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@perm.has('sys:user:delete')")
-    public ResultInfo<Void> delete(@PathVariable String ids) {
-        userService.delete(ids);
+    public ResultInfo<Void> delete(@PathVariable String ids,
+                                   @AuthenticationPrincipal LoginUser loginUser) {
+        userService.delete(ids, loginUser);
         return ResultInfo.ok();
     }
 }

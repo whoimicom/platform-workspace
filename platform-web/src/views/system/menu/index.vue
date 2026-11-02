@@ -235,6 +235,18 @@
           />
         </el-form-item>
 
+        <el-form-item label="归属架构" prop="orgId">
+          <el-tree-select
+            v-model="formData.orgId"
+            placeholder="选择归属架构，默认为全局菜单"
+            :data="orgOptions"
+            filterable
+            default-expand-all
+            check-strictly
+            :render-after-expand="false"
+          />
+        </el-form-item>
+
         <SectionTitle v-if="showRoutePath || isExternal" title="访问配置" />
 
         <template v-if="isExternal">
@@ -485,6 +497,7 @@ import {
 
 import MenuAPI from "@/api/system/menu";
 import type { MenuForm, MenuItem, MenuQuery } from "@/api/system/menu";
+import OrgAPI from "@/api/system/org";
 import type { OptionItem } from "@/api/common";
 import {
   filterPageComponent,
@@ -563,6 +576,7 @@ const initialFormData: MenuForm = {
   keepAlive: 1,
   params: [],
   generateCrudButtons: false,
+  orgId: "0",
 };
 
 const formData = reactive<MenuForm>({ ...initialFormData });
@@ -570,6 +584,13 @@ const formData = reactive<MenuForm>({ ...initialFormData });
 // 上级菜单选项，顶级节点下挂完整菜单树
 const menuOptions = computed<OptionItem[]>(() => [
   { value: "0", label: "顶级菜单", children: toMenuOptions(parentMenuTree.value) },
+]);
+
+// 归属架构下拉数据源，"0" 表示全局菜单
+const orgTreeData = ref<OptionItem[]>([]);
+// 归属架构选项，根节点为全局菜单
+const orgOptions = computed<OptionItem[]>(() => [
+  { value: "0", label: "全局菜单", children: orgTreeData.value },
 ]);
 
 // 抽屉宽度（响应式）
@@ -1056,11 +1077,13 @@ function resetForm(): void {
  */
 async function openDialog(parentId?: string, menuId?: string): Promise<void> {
   // 拉全量菜单：上级选项与排序推算都要用完整数据，避免被搜索条件过滤
-  const [allMenus, menuForm] = await Promise.all([
+  const [allMenus, menuForm, orgTree] = await Promise.all([
     MenuAPI.getList({}),
     menuId ? MenuAPI.getFormData(menuId) : Promise.resolve(null),
+    OrgAPI.getOptions(),
   ]);
   parentMenuTree.value = allMenus;
+  orgTreeData.value = orgTree;
 
   dialogState.visible = true;
   if (menuForm) {

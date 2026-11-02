@@ -9,6 +9,7 @@ import com.platform.api.common.query.DynamicQueryExecutor;
 import com.platform.api.common.query.RawCondition;
 import com.platform.api.config.AppProperties;
 import com.platform.api.security.LoginUser;
+import com.platform.api.system.org.OrgScope;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,7 +30,7 @@ public class UserService {
             String.valueOf(rs.getLong("id")),
             rs.getString("avatar"),
             rs.getString("create_time"),
-            rs.getString("dept_name"),
+            rs.getString("org_name"),
             rs.getString("email"),
             JdbcUtil.getInt(rs, "gender"),
             rs.getString("mobile"),
@@ -42,7 +43,7 @@ public class UserService {
             SELECT u.id AS id,
                    u.avatar AS avatar,
                    DATE_FORMAT(u.create_time, '%Y-%m-%d %H:%i:%s') AS create_time,
-                   d.name AS dept_name,
+                   o.name AS org_name,
                    u.email AS email,
                    u.gender AS gender,
                    u.mobile AS mobile,
@@ -54,7 +55,7 @@ public class UserService {
                    u.status AS status,
                    u.username AS username
               FROM sys_user u
-              LEFT JOIN sys_dept d ON d.id = u.dept_id
+              LEFT JOIN sys_org o ON o.id = u.org_id
             """;
 
     private final SysUserRepository userRepository;
@@ -62,17 +63,20 @@ public class UserService {
     private final DynamicQueryExecutor executor;
     private final PasswordEncoder passwordEncoder;
     private final AppProperties properties;
+    private final OrgScope orgScope;
 
     public UserService(SysUserRepository userRepository,
                        NamedParameterJdbcTemplate jdbc,
                        DynamicQueryExecutor executor,
                        PasswordEncoder passwordEncoder,
-                       AppProperties properties) {
+                       AppProperties properties,
+                       OrgScope orgScope) {
         this.userRepository = userRepository;
         this.jdbc = jdbc;
         this.executor = executor;
         this.passwordEncoder = passwordEncoder;
         this.properties = properties;
+        this.orgScope = orgScope;
     }
 
     public UserDtos.UserInfo me(LoginUser loginUser) {
@@ -84,8 +88,8 @@ public class UserService {
                 .orElseThrow(() -> BusinessException.notFound("用户不存在"));
 
         Map<String, Object> params = Map.of("userId", userId);
-        List<String> deptNames = jdbc.query(
-                "SELECT d.name FROM sys_user u LEFT JOIN sys_dept d ON d.id = u.dept_id WHERE u.id = :userId",
+        List<String> orgNames = jdbc.query(
+                "SELECT o.name FROM sys_user u LEFT JOIN sys_org o ON o.id = u.org_id WHERE u.id = :userId",
                 params, (rs, rowNum) -> rs.getString("name"));
 
         List<String[]> rolePairs = jdbc.query(
@@ -110,12 +114,19 @@ public class UserService {
         }
 
         return new UserDtos.UserInfo(String.valueOf(userId), user.getUsername(), user.getNickname(),
-                user.getAvatar(), user.getGender(), deptNames.isEmpty() ? null : deptNames.get(0),
+                user.getAvatar(), user.getGender(), orgNames.isEmpty() ? null : orgNames.get(0),
                 roles, roleNames, new ArrayList<>(perms), false);
     }
 
-    public Page<UserDtos.UserItem> page(UserDtos.UserQuery query) {
+    public Page<UserDtos.UserItem> page(UserDtos.UserQuery query, LoginUser loginUser) {
         List<RawCondition> extras = new ArrayList<>();
+        OrgScope.Scope scope = orgScope.scopeOf(loginUser);
+        if (scope != null) {
+            extras.add(RawCondition.of(
+                    "EXISTS (SELECT 1 FROM sys_org so WHERE so.id = u.org_id AND "
+                            + orgScope.subtreeCondition("so") + ")",
+                    orgScope.params(scope)));
+        }
         String keywords = query.getKeywords();
         if (keywords != null && !keywords.isBlank()) {
             extras.add(RawCondition.of(
@@ -139,13 +150,14 @@ public class UserService {
         return executor.page(BASE_SELECT, query, USER_ITEM_MAPPER, extras.toArray(RawCondition[]::new));
     }
 
-    public UserDtos.UserForm form(Long id) {
+    public UserDtos.UserForm form(Long id, LoginUser loginUser) {
+        orgScope.checkUser(loginUser, id);
         List<FormRow> rows = jdbc.query(
-                "SELECT id, avatar, dept_id, email, gender, mobile, nickname, status, username "
+                "SELECT id, avatar, org_id, email, gender, mobile, nickname, status, username "
                         + "FROM sys_user WHERE id = :id",
                 Map.of("id", id),
                 (rs, rowNum) -> new FormRow(rs.getLong("id"), rs.getString("avatar"),
-                        JdbcUtil.getLong(rs, "dept_id"), rs.getString("email"),
+                        JdbcUtil.getLong(rs, "org_id"), rs.getString("email"),
                         JdbcUtil.getInt(rs, "gender"), rs.getString("mobile"),
                         rs.getString("nickname"), JdbcUtil.getInt(rs, "status"),
                         rs.getString("username")));
@@ -157,11 +169,11 @@ public class UserService {
                         "SELECT role_id FROM sys_user_role WHERE user_id = :id", Map.of("id", id), Long.class)
                 .stream().map(String::valueOf).toList();
         return new UserDtos.UserForm(String.valueOf(row.id()), row.avatar(),
-                row.deptId() == null ? null : String.valueOf(row.deptId()),
+                row.orgId() == null ? null : String.valueOf(row.orgId()),
                 row.email(), row.gender(), row.mobile(), row.nickname(), roleIds, row.status(), row.username());
     }
 
-    public void create(UserDtos.UserForm form) {
+    public void create(UserDtos.UserForm form, LoginUser loginUser) {
         if (form.username() == null || form.username().isBlank()) {
             throw BusinessException.badRequest("用户名不能为空");
         }
@@ -169,6 +181,8 @@ public class UserService {
         if (userRepository.existsByUsername(username)) {
             throw BusinessException.badRequest("用户名已存在");
         }
+        Long orgId = IdUtils.parseLong(form.orgId());
+        checkOrgWritable(loginUser, orgId);
 
         SysUser user = new SysUser();
         user.setUsername(username);
@@ -179,7 +193,7 @@ public class UserService {
         user.setMobile(form.mobile());
         user.setEmail(form.email());
         user.setStatus(form.status() == null ? 1 : form.status());
-        user.setDeptId(IdUtils.parseLong(form.deptId()));
+        user.setOrgId(orgId);
         LocalDateTime now = LocalDateTime.now();
         user.setCreateTime(now);
         user.setUpdateTime(now);
@@ -188,9 +202,12 @@ public class UserService {
         replaceRoles(saved.getId(), form.roleIds());
     }
 
-    public void update(Long id, UserDtos.UserForm form) {
+    public void update(Long id, UserDtos.UserForm form, LoginUser loginUser) {
+        orgScope.checkUser(loginUser, id);
         SysUser existing = userRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound("用户不存在"));
+        Long orgId = IdUtils.parseLong(form.orgId());
+        checkOrgWritable(loginUser, orgId);
 
         String username = existing.getUsername();
         if (form.username() != null && !form.username().isBlank()) {
@@ -211,17 +228,18 @@ public class UserService {
         params.put("mobile", form.mobile());
         params.put("email", form.email());
         params.put("status", form.status() == null ? existing.getStatus() : form.status());
-        params.put("deptId", IdUtils.parseLong(form.deptId()));
+        params.put("orgId", orgId);
         params.put("updateTime", LocalDateTime.now());
         params.put("id", id);
 
         jdbc.update("UPDATE sys_user SET username = :username, nickname = :nickname, avatar = :avatar, "
                 + "gender = :gender, mobile = :mobile, email = :email, status = :status, "
-                + "dept_id = :deptId, update_time = :updateTime WHERE id = :id", params);
+                + "org_id = :orgId, update_time = :updateTime WHERE id = :id", params);
         replaceRoles(id, form.roleIds());
     }
 
-    public void updateStatus(Long id, Integer status) {
+    public void updateStatus(Long id, Integer status, LoginUser loginUser) {
+        orgScope.checkUser(loginUser, id);
         if (status == null || status != 0 && status != 1) {
             throw BusinessException.badRequest("用户状态不合法");
         }
@@ -235,7 +253,8 @@ public class UserService {
         jdbc.update("UPDATE sys_user SET status = :status, update_time = :updateTime WHERE id = :id", params);
     }
 
-    public void resetPassword(Long id, String password) {
+    public void resetPassword(Long id, String password, LoginUser loginUser) {
+        orgScope.checkUser(loginUser, id);
         if (password == null || password.isBlank() || password.trim().length() < 6) {
             throw BusinessException.badRequest("密码长度不能少于6位");
         }
@@ -249,10 +268,13 @@ public class UserService {
         jdbc.update("UPDATE sys_user SET password = :password, update_time = :updateTime WHERE id = :id", params);
     }
 
-    public void delete(String ids) {
+    public void delete(String ids, LoginUser loginUser) {
         List<Long> idList = IdUtils.parse(ids);
         if (idList.isEmpty()) {
             throw BusinessException.badRequest("请选择要删除的用户");
+        }
+        for (Long id : idList) {
+            orgScope.checkUser(loginUser, id);
         }
         Map<String, Object> params = Map.of("ids", idList);
         jdbc.update("DELETE FROM sys_user_role WHERE user_id IN (:ids)", params);
@@ -279,7 +301,20 @@ public class UserService {
         }
     }
 
-    private record FormRow(Long id, String avatar, Long deptId, String email, Integer gender,
+    /**
+     * 非 ROOT 用户创建/编辑用户时，所属架构必须在自己可见范围内。
+     */
+    private void checkOrgWritable(LoginUser loginUser, Long orgId) {
+        if (loginUser == null || loginUser.isRoot()) {
+            return;
+        }
+        if (orgId == null) {
+            throw BusinessException.badRequest("请选择所属架构");
+        }
+        orgScope.check(loginUser, orgId);
+    }
+
+    private record FormRow(Long id, String avatar, Long orgId, String email, Integer gender,
                            String mobile, String nickname, Integer status, String username) {
     }
 }

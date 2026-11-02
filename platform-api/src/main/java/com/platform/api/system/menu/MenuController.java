@@ -34,39 +34,45 @@ public class MenuController {
 
     @GetMapping
     @PreAuthorize("@perm.has('sys:menu:list')")
-    public ResultInfo<List<MenuDtos.MenuItem>> tree(@RequestParam(required = false) String keywords) {
-        return ResultInfo.ok(menuService.tree(keywords));
+    public ResultInfo<List<MenuDtos.MenuItem>> tree(@RequestParam(required = false) String keywords,
+                                                    @AuthenticationPrincipal LoginUser loginUser) {
+        return ResultInfo.ok(menuService.tree(keywords, loginUser));
     }
 
     @GetMapping("/options")
-    public ResultInfo<List<OptionItem>> options(@RequestParam(required = false) List<String> types) {
-        return ResultInfo.ok(menuService.options(types));
+    public ResultInfo<List<OptionItem>> options(@RequestParam(required = false) List<String> types,
+                                                @AuthenticationPrincipal LoginUser loginUser) {
+        return ResultInfo.ok(menuService.options(types, loginUser));
     }
 
     @GetMapping("/{id}/form")
     @PreAuthorize("@perm.has('sys:menu:list')")
-    public ResultInfo<MenuDtos.MenuForm> form(@PathVariable Long id) {
-        return ResultInfo.ok(menuService.form(id));
+    public ResultInfo<MenuDtos.MenuForm> form(@PathVariable Long id,
+                                              @AuthenticationPrincipal LoginUser loginUser) {
+        return ResultInfo.ok(menuService.form(id, loginUser));
     }
 
     @PostMapping
     @PreAuthorize("@perm.has('sys:menu:create')")
-    public ResultInfo<Void> create(@RequestBody MenuDtos.MenuForm form) {
-        menuService.create(form);
+    public ResultInfo<Void> create(@RequestBody MenuDtos.MenuForm form,
+                                   @AuthenticationPrincipal LoginUser loginUser) {
+        menuService.create(form, loginUser);
         return ResultInfo.ok();
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@perm.has('sys:menu:update')")
-    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody MenuDtos.MenuForm form) {
-        menuService.update(id, form);
+    public ResultInfo<Void> update(@PathVariable Long id, @RequestBody MenuDtos.MenuForm form,
+                                   @AuthenticationPrincipal LoginUser loginUser) {
+        menuService.update(id, form, loginUser);
         return ResultInfo.ok();
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@perm.has('sys:menu:delete')")
-    public ResultInfo<Void> delete(@PathVariable Long id) {
-        menuService.delete(id);
+    public ResultInfo<Void> delete(@PathVariable Long id,
+                                   @AuthenticationPrincipal LoginUser loginUser) {
+        menuService.delete(id, loginUser);
         return ResultInfo.ok();
     }
 }

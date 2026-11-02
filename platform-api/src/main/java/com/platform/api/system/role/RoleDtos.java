@@ -20,7 +20,7 @@ public final class RoleDtos {
     }
 
     public record RoleForm(String id, String code, String name, Integer sort, Integer status,
-                           Integer dataScope, List<String> deptIds, String remark) {
+                           Integer dataScope, List<String> orgIds, String remark) {
     }
 
     @QuerySort(value = {

@@ -1,52 +1,52 @@
 import request from "@/utils/request";
-import type { DeptQuery, DeptItem, DeptForm } from "./types";
+import type { OrgQuery, OrgItem, OrgForm } from "./types";
 import type { OptionItem } from "@/api/common";
 
-const DEPT_BASE_URL = "/api/depts";
+const ORG_BASE_URL = "/api/orgs";
 
-const DeptAPI = {
+const OrgAPI = {
   /**
-   * 获取部门树形列表
+   * 获取架构树形列表
    */
-  getList(queryParams?: DeptQuery) {
-    return request<unknown, DeptItem[]>({
-      url: DEPT_BASE_URL,
+  getList(queryParams?: OrgQuery) {
+    return request<unknown, OrgItem[]>({
+      url: ORG_BASE_URL,
       method: "get",
       params: queryParams,
     });
   },
   /**
-   * 获取部门下拉数据源
+   * 获取架构下拉数据源
    */
   getOptions() {
-    return request<unknown, OptionItem[]>({ url: `${DEPT_BASE_URL}/options`, method: "get" });
+    return request<unknown, OptionItem[]>({ url: `${ORG_BASE_URL}/options`, method: "get" });
   },
   /**
-   * 获取部门表单数据
+   * 获取架构表单数据
    */
   getFormData(id: string) {
-    return request<unknown, DeptForm>({ url: `${DEPT_BASE_URL}/${id}/form`, method: "get" });
+    return request<unknown, OrgForm>({ url: `${ORG_BASE_URL}/${id}/form`, method: "get" });
   },
   /**
-   * 新增部门
+   * 新增架构
    */
-  create(data: DeptForm) {
-    return request({ url: DEPT_BASE_URL, method: "post", data });
+  create(data: OrgForm) {
+    return request({ url: ORG_BASE_URL, method: "post", data });
   },
   /**
-   * 修改部门
+   * 修改架构
    */
-  update(id: string, data: DeptForm) {
-    return request({ url: `${DEPT_BASE_URL}/${id}`, method: "put", data });
+  update(id: string, data: OrgForm) {
+    return request({ url: `${ORG_BASE_URL}/${id}`, method: "put", data });
   },
   /**
-   * 批量删除部门，多个以英文逗号(,)分割
+   * 批量删除架构，多个以英文逗号(,)分割
    */
   deleteByIds(ids: string) {
-    return request({ url: `${DEPT_BASE_URL}/${ids}`, method: "delete" });
+    return request({ url: `${ORG_BASE_URL}/${ids}`, method: "delete" });
   },
 };
 
-export default DeptAPI;
+export default OrgAPI;
 
 export * from "./types";

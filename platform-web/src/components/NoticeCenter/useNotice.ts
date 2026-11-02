@@ -1,7 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import NoticeAPI from "@/api/system/notice";
 import type { NoticeDetail, NoticeItem, NoticeQuery } from "@/api/system/notice";
-import { useRealtime } from "@/composables/useRealtime";
 import router from "@/router";
 import { authSessionRevision } from "@/utils/auth";
 
@@ -12,7 +11,6 @@ type NoticeStatus = 0 | 1;
  * 通知中心的数据与交互。
  */
 export function useNotice() {
-  const { onNoticeChange } = useRealtime();
   const list = ref<NoticeItem[]>([]);
   const unreadTotal = ref(0);
   const activeStatus = ref<NoticeStatus>(0);
@@ -134,22 +132,6 @@ export function useNotice() {
   function goMore(): void {
     void router.push({ name: "MyNotice" });
   }
-
-  onNoticeChange((message) => {
-    if (message?.payload.action === "revoked" && detail.value?.id === message.payload.noticeId) {
-      detail.value = null;
-      dialogVisible.value = false;
-    }
-    if (message?.payload.action === "published") {
-      ElNotification({
-        title: "新通知",
-        message: "您收到一条新的通知消息",
-        type: "success",
-        position: "bottom-right",
-      });
-    }
-    scheduleRefresh();
-  });
 
   onMounted(scheduleRefresh);
   onBeforeUnmount(() => {

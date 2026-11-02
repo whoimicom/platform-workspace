@@ -1,15 +1,15 @@
 <template>
-  <el-card shadow="never" class="dept-card">
-    <el-input v-model="deptName" class="dept-card__search" placeholder="搜索部门" clearable>
+  <el-card shadow="never" class="org-card">
+    <el-input v-model="orgName" class="org-card__search" placeholder="搜索架构" clearable>
       <template #prefix>
         <el-icon><Search /></el-icon>
       </template>
     </el-input>
 
     <el-tree
-      ref="deptTreeRef"
-      class="dept-card__tree"
-      :data="deptList"
+      ref="orgTreeRef"
+      class="org-card__tree"
+      :data="orgList"
       :props="{ children: 'children', label: 'label', disabled: '' }"
       :expand-on-click-node="false"
       :filter-node-method="handleFilter"
@@ -20,12 +20,12 @@
 </template>
 
 <script setup lang="ts">
-import DeptAPI from "@/api/system/dept";
+import OrgAPI from "@/api/system/org";
 import type { OptionItem } from "@/api/common";
 import type { TreeNodeData } from "element-plus/es/components/tree";
 
 /**
- * 用户部门树：按部门筛选用户
+ * 用户架构树：按架构筛选用户
  */
 const props = defineProps({
   modelValue: {
@@ -34,20 +34,20 @@ const props = defineProps({
   },
 });
 
-const deptList = ref<OptionItem[]>();
-const deptTreeRef = ref();
-const deptName = ref("");
+const orgList = ref<OptionItem[]>();
+const orgTreeRef = ref();
+const orgName = ref("");
 
 /**
- * 选中部门时上抛部门 ID
+ * 选中架构时上抛架构 ID
  */
 const emits = defineEmits(["node-click"]);
 
-const deptId = useVModel(props, "modelValue", emits);
+const orgId = useVModel(props, "modelValue", emits);
 
 watchEffect(
   () => {
-    deptTreeRef.value?.filter(deptName.value);
+    orgTreeRef.value?.filter(orgName.value);
   },
   {
     flush: "post",
@@ -55,7 +55,7 @@ watchEffect(
 );
 
 /**
- * 部门树的节点过滤
+ * 架构树的节点过滤
  */
 function handleFilter(value: string, data: TreeNodeData): boolean {
   if (!value) {
@@ -65,22 +65,22 @@ function handleFilter(value: string, data: TreeNodeData): boolean {
 }
 
 /**
- * 点击部门树节点
+ * 点击架构树节点
  */
 function handleNodeClick(data: OptionItem): void {
-  deptId.value = data.value;
+  orgId.value = data.value;
   emits("node-click");
 }
 
 onBeforeMount(() => {
-  DeptAPI.getOptions().then((data) => {
-    deptList.value = data;
+  OrgAPI.getOptions().then((data) => {
+    orgList.value = data;
   });
 });
 </script>
 
 <style lang="scss" scoped>
-.dept-card {
+.org-card {
   height: 100%;
   background: transparent;
   border: 0;
@@ -96,11 +96,11 @@ onBeforeMount(() => {
   }
 }
 
-.dept-card__search {
+.org-card__search {
   margin-bottom: 10px;
 }
 
-.dept-card__tree {
+.org-card__tree {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;

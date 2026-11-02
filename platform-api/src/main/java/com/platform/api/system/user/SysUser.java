@@ -18,7 +18,7 @@ public class SysUser {
     private String mobile;
     private String email;
     private Integer status;
-    private Long deptId;
+    private Long orgId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
@@ -94,12 +94,12 @@ public class SysUser {
         this.status = status;
     }
 
-    public Long getDeptId() {
-        return deptId;
+    public Long getOrgId() {
+        return orgId;
     }
 
-    public void setDeptId(Long deptId) {
-        this.deptId = deptId;
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
     }
 
     public LocalDateTime getCreateTime() {

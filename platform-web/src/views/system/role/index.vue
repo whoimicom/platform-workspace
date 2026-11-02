@@ -244,16 +244,16 @@
 
         <el-form-item
           v-if="formData.dataScope === DATA_SCOPE_CUSTOM"
-          label="选择部门"
-          prop="deptIds"
+          label="选择架构"
+          prop="orgIds"
         >
           <el-tree-select
-            v-model="formData.deptIds"
-            :data="deptOptions"
+            v-model="formData.orgIds"
+            :data="orgOptions"
             multiple
             :render-after-expand="false"
             check-strictly
-            placeholder="请选择部门"
+            placeholder="请选择架构"
             style="width: 100%"
           />
         </el-form-item>
@@ -304,7 +304,7 @@ import RoleAPI from "@/api/system/role";
 import type { RoleForm, RoleItem, RoleQuery } from "@/api/system/role";
 import MenuAPI from "@/api/system/menu";
 import type { MenuItem } from "@/api/system/menu";
-import DeptAPI from "@/api/system/dept";
+import OrgAPI from "@/api/system/org";
 import type { OptionItem } from "@/api/common";
 import { usePageTable } from "@/composables";
 import StatusDot from "@/components/StatusDot/index.vue";
@@ -328,10 +328,10 @@ const DATA_SCOPE_CUSTOM = 5;
 
 const dataScopeOptions = [
   { label: "全部数据", value: 1 },
-  { label: "部门及子部门数据", value: 2 },
-  { label: "本部门数据", value: 3 },
+  { label: "架构及子架构数据", value: 2 },
+  { label: "本架构数据", value: 3 },
   { label: "本人数据", value: 4 },
-  { label: "自定义部门数据", value: DATA_SCOPE_CUSTOM },
+  { label: "自定义架构数据", value: DATA_SCOPE_CUSTOM },
 ];
 
 // 左侧角色列表分页数据管理
@@ -751,12 +751,12 @@ const rules: FormRules<RoleForm> = {
   name: [{ required: true, message: "请输入角色名称", trigger: "blur" }],
   code: [{ required: true, message: "请输入角色编码", trigger: "blur" }],
   dataScope: [{ required: true, message: "请选择数据权限", trigger: "blur" }],
-  deptIds: [{ required: true, message: "请选择部门", trigger: "blur" }],
+  orgIds: [{ required: true, message: "请选择架构", trigger: "blur" }],
   status: [{ required: true, message: "请选择状态", trigger: "blur" }],
 };
 
-// 部门下拉选项（懒加载，新增/编辑时才请求）
-const deptOptions = ref<OptionItem[]>([]);
+// 架构下拉选项（懒加载，新增/编辑时才请求）
+const orgOptions = ref<OptionItem[]>([]);
 
 /**
  * 打开角色表单弹窗
@@ -788,12 +788,12 @@ function resetForm(): void {
 
 /**
  * 打开新增角色弹窗
- * 部门下拉首次打开时请求，之后复用缓存
+ * 架构下拉首次打开时请求，之后复用缓存
  */
 async function handleCreateClick(): Promise<void> {
   dialogState.title = "新增角色";
-  if (deptOptions.value.length === 0) {
-    deptOptions.value = await DeptAPI.getOptions();
+  if (orgOptions.value.length === 0) {
+    orgOptions.value = await OrgAPI.getOptions();
   }
   openDialog();
 }
@@ -806,8 +806,8 @@ async function handleCreateClick(): Promise<void> {
 async function handleEditClick(roleId?: string): Promise<void> {
   if (!roleId) return;
   dialogState.title = "修改角色";
-  if (deptOptions.value.length === 0) {
-    deptOptions.value = await DeptAPI.getOptions();
+  if (orgOptions.value.length === 0) {
+    orgOptions.value = await OrgAPI.getOptions();
   }
   const data = await RoleAPI.getFormData(roleId);
   Object.assign(formData, data);
@@ -817,7 +817,7 @@ async function handleEditClick(roleId?: string): Promise<void> {
 /**
  * 校验并提交角色表单
  *
- * 非自定义数据权限时丢弃部门 ID
+ * 非自定义数据权限时丢弃架构 ID
  */
 async function handleSubmit(): Promise<void> {
   const valid = await roleFormRef.value?.validate().then(
@@ -828,7 +828,7 @@ async function handleSubmit(): Promise<void> {
 
   const submitData: RoleForm = { ...formData };
   if (submitData.dataScope !== DATA_SCOPE_CUSTOM) {
-    submitData.deptIds = undefined;
+    submitData.orgIds = undefined;
   }
 
   loading.value = true;

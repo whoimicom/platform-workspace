@@ -17,14 +17,14 @@ public final class MenuDtos {
                            String routePath, String routeName, String redirect, String component,
                            String externalUrl, String icon, Integer sort, Integer visible, Integer scope,
                            Integer keepAlive, String perm, List<ParamItem> params,
-                           List<MenuItem> children) {
+                           String orgId, List<MenuItem> children) {
     }
 
     public record MenuForm(String id, String parentId, String name, String type, String path,
                            String routePath, String routeName, String redirect, String component,
                            String externalUrl, String icon, Integer sort, Integer visible, Integer scope,
                            Integer keepAlive, String perm, List<ParamItem> params,
-                           Boolean generateCrudButtons, String buttonPermPrefix) {
+                           Boolean generateCrudButtons, String buttonPermPrefix, String orgId) {
     }
 
     public record RouteMeta(String title, String icon, Boolean hidden, Boolean keepAlive,

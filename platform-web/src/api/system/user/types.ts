@@ -32,8 +32,8 @@ export interface UserQuery extends PageQuery {
   keywords?: string;
   /** 用户状态 */
   status?: number;
-  /** 部门 ID */
-  deptId?: string;
+  /** 架构 ID */
+  orgId?: string;
   /** 创建时间 */
   createTime?: [string, string];
 }
@@ -48,8 +48,8 @@ export interface UserItem {
   avatar?: string;
   /** 创建时间 */
   createTime?: string;
-  /** 部门名称 */
-  deptName?: string;
+  /** 架构名称 */
+  orgName?: string;
   /** 用户邮箱 */
   email?: string;
   /** 性别 */
@@ -74,8 +74,8 @@ export interface UserForm {
   id?: string;
   /** 用户头像 */
   avatar?: string;
-  /** 部门 ID */
-  deptId?: string;
+  /** 架构 ID */
+  orgId?: string;
   /** 用户邮箱 */
   email?: string;
   /** 性别 */
@@ -110,8 +110,8 @@ export interface UserProfileDetail {
   mobile?: string;
   /** 邮箱 */
   email?: string;
-  /** 部门名称 */
-  deptName?: string;
+  /** 架构名称 */
+  orgName?: string;
   /** 角色名称 */
   roleNames?: string;
   /** 创建时间 */

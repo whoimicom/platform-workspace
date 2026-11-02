@@ -18,7 +18,12 @@ spring:
     init:
       # 表结构由 sql/platform_api.sql 手动导入，启动时不执行建表脚本
       mode: never
-
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      password: ${REDIS_PASSWORD:}
+      database: 13
+      port: 6379
 app:
   # 是否校验图形验证码（前端登录页默认展示验证码）
   captcha-enabled: true

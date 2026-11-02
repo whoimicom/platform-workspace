@@ -5,6 +5,7 @@ import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
 import com.platform.api.security.LoginUser;
+import com.platform.api.system.org.OrgScope;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -30,19 +31,21 @@ public class MenuService {
     private static final String LAYOUT_COMPONENT = "Layout";
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final OrgScope orgScope;
 
-    public MenuService(NamedParameterJdbcTemplate jdbc) {
+    public MenuService(NamedParameterJdbcTemplate jdbc, OrgScope orgScope) {
         this.jdbc = jdbc;
+        this.orgScope = orgScope;
     }
 
-    public List<MenuDtos.MenuItem> tree(String keywords) {
-        List<MenuRow> rows = loadRows();
+    public List<MenuDtos.MenuItem> tree(String keywords, LoginUser loginUser) {
+        List<MenuRow> rows = filterScope(loadRows(), loginUser);
         java.util.function.Predicate<MenuRow> predicate = row -> keywords == null || keywords.isBlank()
                 || (row.name() != null && row.name().contains(keywords.trim()));
         return build(rows, 0L, predicate);
     }
 
-    public List<OptionItem> options(List<String> types) {
+    public List<OptionItem> options(List<String> types, LoginUser loginUser) {
         Set<String> allowed = new LinkedHashSet<>();
         if (types != null) {
             for (String type : types) {
@@ -56,28 +59,30 @@ public class MenuService {
                 }
             }
         }
-        List<MenuRow> rows = loadRows();
+        List<MenuRow> rows = filterScope(loadRows(), loginUser);
         if (!allowed.isEmpty()) {
             rows = rows.stream().filter(row -> allowed.contains(row.type())).toList();
         }
         return buildOptions(rows, 0L);
     }
 
-    public MenuDtos.MenuForm form(Long id) {
+    public MenuDtos.MenuForm form(Long id, LoginUser loginUser) {
         MenuRow row = loadRows().stream().filter(item -> item.id() == id).findFirst()
                 .orElseThrow(() -> BusinessException.notFound("菜单不存在"));
+        checkScope(loginUser, row.orgId());
         List<MenuDtos.ParamItem> params = parseParams(row.params());
         return new MenuDtos.MenuForm(String.valueOf(row.id()), String.valueOf(row.parentId()),
                 row.name(), row.type(), row.path(), row.path(), row.routeName(), row.redirect(),
                 row.component(), row.externalUrl(), row.icon(), row.sort(), row.visible(), row.scope(),
-                row.keepAlive(), row.perm(), params, null, null);
+                row.keepAlive(), row.perm(), params, null, null, String.valueOf(row.orgId()));
     }
 
     @Transactional
-    public void create(MenuDtos.MenuForm form) {
+    public void create(MenuDtos.MenuForm form, LoginUser loginUser) {
         validate(form);
         long parentId = resolveParentId(form.parentId());
         ensureParentExists(parentId);
+        long orgId = resolveOrgId(form, loginUser);
 
         String type = form.type().trim().toUpperCase();
         String path = resolvePath(form);
@@ -85,7 +90,7 @@ public class MenuService {
                 form.redirect(), form.component(), form.externalUrl(), form.icon(),
                 form.sort() == null ? 1 : form.sort(), form.visible() == null ? 1 : form.visible(),
                 form.scope() == null ? 1 : form.scope(), form.keepAlive(), form.perm(),
-                serializeParams(form.params()));
+                serializeParams(form.params()), orgId);
 
         if (Boolean.TRUE.equals(form.generateCrudButtons()) && "M".equals(type)
                 && form.buttonPermPrefix() != null && !form.buttonPermPrefix().isBlank()) {
@@ -95,16 +100,17 @@ public class MenuService {
             for (int index = 0; index < buttons.length; index++) {
                 insertMenu(menuId, form.name().trim() + buttons[index][0], "B", null, null, null,
                         null, null, null, index + 1, 1, form.scope() == null ? 1 : form.scope(), null,
-                        prefix + ":" + buttons[index][1], null);
+                        prefix + ":" + buttons[index][1], null, orgId);
             }
         }
     }
 
     @Transactional
-    public void update(Long id, MenuDtos.MenuForm form) {
+    public void update(Long id, MenuDtos.MenuForm form, LoginUser loginUser) {
         List<MenuRow> rows = loadRows();
         MenuRow current = rows.stream().filter(item -> item.id() == id).findFirst()
                 .orElseThrow(() -> BusinessException.notFound("菜单不存在"));
+        checkScope(loginUser, current.orgId());
         validate(form);
 
         long parentId = resolveParentId(form.parentId());
@@ -112,6 +118,7 @@ public class MenuService {
         if (parentId != 0L && (parentId == id || isDescendant(rows, id, parentId))) {
             throw BusinessException.badRequest("上级菜单不能是自身或子级");
         }
+        long orgId = resolveOrgId(form, loginUser);
 
         String type = form.type().trim().toUpperCase();
         MapSqlParameterSource params = new MapSqlParameterSource();
@@ -130,6 +137,7 @@ public class MenuService {
         params.addValue("keepAlive", form.keepAlive());
         params.addValue("perm", form.perm());
         params.addValue("params", serializeParams(form.params()));
+        params.addValue("orgId", orgId);
         params.addValue("updateTime", LocalDateTime.now());
         params.addValue("id", id);
 
@@ -137,15 +145,15 @@ public class MenuService {
                 + "route_name = :routeName, redirect = :redirect, component = :component, "
                 + "external_url = :externalUrl, icon = :icon, sort = :sort, visible = :visible, "
                 + "scope = :scope, keep_alive = :keepAlive, perm = :perm, params = :params, "
-                + "update_time = :updateTime WHERE id = :id", params);
+                + "org_id = :orgId, update_time = :updateTime WHERE id = :id", params);
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, LoginUser loginUser) {
         List<MenuRow> rows = loadRows();
-        if (rows.stream().noneMatch(item -> item.id() == id)) {
-            throw BusinessException.notFound("菜单不存在");
-        }
+        MenuRow target = rows.stream().filter(item -> item.id() == id).findFirst()
+                .orElseThrow(() -> BusinessException.notFound("菜单不存在"));
+        checkScope(loginUser, target.orgId());
         Set<Long> ids = new LinkedHashSet<>();
         collectSubtree(rows, id, ids);
         jdbc.update("DELETE FROM sys_role_menu WHERE menu_id IN (:ids)", Map.of("ids", ids));
@@ -169,10 +177,47 @@ public class MenuService {
         return buildRoutes(routeRows, 0L);
     }
 
+    /**
+     * 非 ROOT 仅能管理可见架构子树内的菜单；org_id=0 的全局菜单仅 ROOT 可见可管。
+     */
+    private List<MenuRow> filterScope(List<MenuRow> rows, LoginUser loginUser) {
+        Set<Long> ids = orgScope.subtreeIds(orgScope.scopeOf(loginUser));
+        if (ids == null) {
+            return rows;
+        }
+        return rows.stream().filter(row -> ids.contains(row.orgId())).toList();
+    }
+
+    private void checkScope(LoginUser loginUser, long orgId) {
+        OrgScope.Scope scope = orgScope.scopeOf(loginUser);
+        if (scope == null) {
+            return;
+        }
+        if (!orgScope.subtreeIds(scope).contains(orgId)) {
+            throw BusinessException.forbidden("无权操作该菜单");
+        }
+    }
+
+    /**
+     * 解析菜单归属架构：非 ROOT 必须选择可见范围内的架构，不允许全局（0）。
+     */
+    private long resolveOrgId(MenuDtos.MenuForm form, LoginUser loginUser) {
+        Long parsed = IdUtils.parseLong(form.orgId());
+        long orgId = parsed == null ? 0L : parsed;
+        if (loginUser == null || loginUser.isRoot()) {
+            return orgId;
+        }
+        if (orgId == 0L) {
+            throw BusinessException.badRequest("请选择归属架构");
+        }
+        orgScope.check(loginUser, orgId);
+        return orgId;
+    }
+
     private long insertMenu(long parentId, String name, String type, String path, String routeName,
                             String redirect, String component, String externalUrl, String icon,
                             Integer sort, Integer visible, Integer scope, Integer keepAlive,
-                            String perm, String params) {
+                            String perm, String params, long orgId) {
         MapSqlParameterSource source = new MapSqlParameterSource();
         source.addValue("parentId", parentId);
         source.addValue("name", name);
@@ -189,15 +234,16 @@ public class MenuService {
         source.addValue("keepAlive", keepAlive);
         source.addValue("perm", perm);
         source.addValue("params", params);
+        source.addValue("orgId", orgId);
         source.addValue("createTime", LocalDateTime.now());
         source.addValue("updateTime", LocalDateTime.now());
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update("INSERT INTO sys_menu (parent_id, name, type, path, route_name, redirect, component, "
-                        + "external_url, icon, sort, visible, scope, keep_alive, perm, params, create_time, update_time) "
+                        + "external_url, icon, sort, visible, scope, keep_alive, perm, params, org_id, create_time, update_time) "
                         + "VALUES (:parentId, :name, :type, :path, :routeName, :redirect, :component, "
                         + ":externalUrl, :icon, :sort, :visible, :scope, :keepAlive, :perm, :params, "
-                        + ":createTime, :updateTime)", source, keyHolder, new String[]{"id"});
+                        + ":orgId, :createTime, :updateTime)", source, keyHolder, new String[]{"id"});
         Number key = keyHolder.getKey();
         return key == null ? 0L : key.longValue();
     }
@@ -262,7 +308,7 @@ public class MenuService {
         return new MenuDtos.MenuItem(String.valueOf(row.id()), String.valueOf(row.parentId()), row.name(),
                 row.type(), row.path(), row.path(), row.routeName(), row.redirect(), row.component(),
                 row.externalUrl(), row.icon(), row.sort(), row.visible(), row.scope(), row.keepAlive(),
-                row.perm(), parseParams(row.params()), children);
+                row.perm(), parseParams(row.params()), String.valueOf(row.orgId()), children);
     }
 
     private List<OptionItem> buildOptions(List<MenuRow> rows, long parentId) {
@@ -355,7 +401,7 @@ public class MenuService {
 
     private List<MenuRow> loadRows() {
         return jdbc.query("SELECT id, parent_id, name, type, path, route_name, redirect, component, "
-                        + "external_url, icon, sort, visible, scope, keep_alive, params, perm FROM sys_menu "
+                        + "external_url, icon, sort, visible, scope, keep_alive, params, perm, org_id FROM sys_menu "
                         + "ORDER BY sort ASC, id ASC",
                 new HashMap<>(), (rs, rowNum) -> new MenuRow(
                         rs.getLong("id"),
@@ -373,12 +419,13 @@ public class MenuService {
                         JdbcUtil.getInt(rs, "scope"),
                         JdbcUtil.getInt(rs, "keep_alive"),
                         rs.getString("params"),
-                        rs.getString("perm")));
+                        rs.getString("perm"),
+                        rs.getLong("org_id")));
     }
 
     private record MenuRow(long id, long parentId, String name, String type, String path,
                            String routeName, String redirect, String component, String externalUrl,
                            String icon, Integer sort, Integer visible, Integer scope, Integer keepAlive,
-                           String params, String perm) {
+                           String params, String perm, long orgId) {
     }
 }

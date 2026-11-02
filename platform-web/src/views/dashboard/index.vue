@@ -47,20 +47,12 @@
     <section class="dash-stats">
       <div class="stat-card">
         <div class="stat-card__icon stat-card__icon--online">
-          <el-icon :size="18"><Connection /></el-icon>
+          <el-icon :size="18"><Bell /></el-icon>
         </div>
         <div class="stat-card__body">
-          <span class="stat-card__label">在线用户</span>
-          <span class="stat-card__num">{{ onlineUserCount ?? "--" }}</span>
+          <span class="stat-card__label">未读通知</span>
+          <span class="stat-card__num">{{ displayTransitionUnread }}</span>
         </div>
-        <span
-          :class="[
-            'stat-card__badge',
-            isConnected ? 'stat-card__badge--on' : 'stat-card__badge--off',
-          ]"
-        >
-          {{ isConnected ? "实时" : "离线" }}
-        </span>
       </div>
 
       <div class="stat-card">
@@ -68,18 +60,18 @@
           <el-icon :size="18"><User /></el-icon>
         </div>
         <div class="stat-card__body">
-          <span class="stat-card__label">今日访客</span>
-          <span class="stat-card__num">{{ displayTransitionUvCount }}</span>
+          <span class="stat-card__label">今日新增用户</span>
+          <span class="stat-card__num">{{ displayTransitionNewUsers }}</span>
         </div>
         <span
-          v-if="uvGrowthText !== '--'"
-          :class="['stat-card__trend', `stat-card__trend--${uvTrendTone}`]"
+          v-if="userGrowthText !== '--'"
+          :class="['stat-card__trend', `stat-card__trend--${userTrendTone}`]"
         >
           <el-icon :size="12">
-            <ArrowUp v-if="uvIsUp" />
+            <ArrowUp v-if="userIsUp" />
             <ArrowDown v-else />
           </el-icon>
-          {{ uvGrowthText }}
+          {{ userGrowthText }}
         </span>
       </div>
 
@@ -88,19 +80,9 @@
           <el-icon :size="18"><View /></el-icon>
         </div>
         <div class="stat-card__body">
-          <span class="stat-card__label">今日浏览量</span>
-          <span class="stat-card__num">{{ displayTransitionPvCount }}</span>
+          <span class="stat-card__label">已发布通知</span>
+          <span class="stat-card__num">{{ displayTransitionPublished }}</span>
         </div>
-        <span
-          v-if="pvGrowthText !== '--'"
-          :class="['stat-card__trend', `stat-card__trend--${pvTrendTone}`]"
-        >
-          <el-icon :size="12">
-            <ArrowUp v-if="pvIsUp" />
-            <ArrowDown v-else />
-          </el-icon>
-          {{ pvGrowthText }}
-        </span>
       </div>
 
       <div class="stat-card">
@@ -109,19 +91,15 @@
         </div>
         <div class="stat-card__body">
           <span class="stat-card__label">系统用户</span>
-          <span class="stat-card__num">6</span>
+          <span class="stat-card__num">{{ displayTransitionUserCount }}</span>
         </div>
-        <span :class="['stat-card__trend', `stat-card__trend--${systemTrendTone}`]">
-          <el-icon :size="12"><ArrowUp /></el-icon>
-          12.5%
-        </span>
       </div>
     </section>
 
     <section class="dash-chart">
       <div class="card dash-chart__trend">
         <div class="card__head">
-          <h3 class="card__title">访问趋势</h3>
+          <h3 class="card__title">用户增长趋势</h3>
           <el-radio-group v-model="visitTrendDateRange" size="small">
             <el-radio-button label="近7天" :value="7" />
             <el-radio-button label="近30天" :value="30" />
@@ -224,17 +202,16 @@
 <script setup lang="ts">
 defineOptions({ name: "Dashboard", inheritAttrs: false });
 
-import { dayjs } from "element-plus";
 import { ref } from "vue";
-import LogAPI from "@/api/system/log";
-import type { VisitOverviewDetail, VisitTrendDetail } from "@/api/system/log";
+import DashboardAPI from "@/api/dashboard";
+import type { DashboardStats, UserTrend } from "@/api/dashboard";
 import { useUserStore } from "@/stores/user";
 import { useSettingsStore } from "@/stores/settings";
 import { formatGrowthRate } from "@/utils";
 import { useTransition } from "@vueuse/core";
 import {
   User,
-  Connection,
+  Bell,
   View,
   ArrowUp,
   ArrowDown,
@@ -243,11 +220,9 @@ import {
   Document,
   VideoPlay,
 } from "@element-plus/icons-vue";
-import { useOnlineUserCount } from "./composables/useOnlineUserCount";
 
 const userStore = useUserStore();
 const settingsStore = useSettingsStore();
-const { onlineUserCount, isConnected } = useOnlineUserCount();
 
 const hours = new Date().getHours();
 const greetings = computed(() => {
@@ -339,48 +314,37 @@ const todoSummaryItems = [
   { label: "今日完成", value: "1", tone: "success" },
 ];
 
-const visitOverviewData = ref<VisitOverviewDetail>({
-  todayUvCount: 0,
-  uvGrowthRate: 0,
-  totalUvCount: 0,
-  todayPvCount: 0,
-  pvGrowthRate: 0,
-  totalPvCount: 0,
+const statsData = ref<DashboardStats>({
+  userCount: 0,
+  todayNewUsers: 0,
+  userGrowthRate: null,
+  unreadNoticeCount: 0,
+  publishedNoticeCount: 0,
+  roleCount: 0,
+  orgCount: 0,
 });
 
-const uvGrowthText = computed(() => {
-  const r = visitOverviewData.value.uvGrowthRate;
+const userGrowthText = computed(() => {
+  const r = statsData.value.userGrowthRate;
   return r == null ? "--" : formatGrowthRate(r);
 });
-const pvGrowthText = computed(() => {
-  const r = visitOverviewData.value.pvGrowthRate;
-  return r == null ? "--" : formatGrowthRate(r);
-});
-const uvIsUp = computed(() => (visitOverviewData.value.uvGrowthRate || 0) > 0);
-const pvIsUp = computed(() => (visitOverviewData.value.pvGrowthRate || 0) > 0);
-const uvTrendTone = computed(() => (uvIsUp.value ? "success" : "danger"));
-const pvTrendTone = computed(() => (pvIsUp.value ? "success" : "danger"));
-const systemTrendTone = "success";
+const userIsUp = computed(() => (statsData.value.userGrowthRate || 0) > 0);
+const userTrendTone = computed(() => (userIsUp.value ? "success" : "danger"));
 
-const tUv = useTransition(
-  computed(() => visitOverviewData.value.todayUvCount),
-  {
+function useCountTransition(getter: () => number) {
+  const t = useTransition(computed(getter), {
     duration: 800,
     transition: [0.25, 0.1, 0.25, 1.0],
-  }
-);
-const tPv = useTransition(
-  computed(() => visitOverviewData.value.todayPvCount),
-  {
-    duration: 800,
-    transition: [0.25, 0.1, 0.25, 1.0],
-  }
-);
-const displayTransitionUvCount = computed(() => Math.round(Number(tUv.value)));
-const displayTransitionPvCount = computed(() => Math.round(Number(tPv.value)));
+  });
+  return computed(() => Math.round(Number(t.value)));
+}
+const displayTransitionUnread = useCountTransition(() => statsData.value.unreadNoticeCount);
+const displayTransitionNewUsers = useCountTransition(() => statsData.value.todayNewUsers);
+const displayTransitionPublished = useCountTransition(() => statsData.value.publishedNoticeCount);
+const displayTransitionUserCount = useCountTransition(() => statsData.value.userCount);
 
 const visitTrendDateRange = ref(7);
-const visitTrendData = ref<VisitTrendDetail>();
+const visitTrendData = ref<UserTrend>();
 const visitTrendChartOptions = ref({});
 
 /**
@@ -420,36 +384,29 @@ function colorWithAlpha(color: string, alpha: number) {
 }
 
 /**
- * 拉取访问概览数据
+ * 拉取首页统计数据
  */
-function fetchVisitOverviewData() {
-  LogAPI.getVisitOverview().then((d) => {
-    visitOverviewData.value = d;
+function fetchStatsData() {
+  DashboardAPI.getStats().then((d) => {
+    statsData.value = d;
   });
 }
 
 /**
- * 拉取访问趋势数据
+ * 拉取用户增长趋势数据
  */
 function fetchVisitTrendData() {
-  const s = dayjs()
-    .subtract(visitTrendDateRange.value - 1, "day")
-    .toDate();
-  LogAPI.getVisitTrend({
-    startDate: dayjs(s).format("YYYY-MM-DD"),
-    endDate: dayjs(new Date()).format("YYYY-MM-DD"),
-  }).then((d) => {
+  DashboardAPI.getUserTrend(visitTrendDateRange.value).then((d) => {
     visitTrendData.value = d;
     updateVisitTrendChartOptions(d);
   });
 }
 
 /**
- * 更新访问趋势图表配置
+ * 更新用户增长趋势图表配置
  */
-function updateVisitTrendChartOptions(d: VisitTrendDetail) {
+function updateVisitTrendChartOptions(d: UserTrend) {
   const primary = getCssVar("--el-color-primary", "#409eff");
-  const success = getCssVar("--el-color-success", "#67c23a");
   const textSecondary = getCssVar("--el-text-color-secondary", "#909399");
   const borderLighter = getCssVar("--el-border-color-lighter", "#ebeef5");
   const gridLine = colorWithAlpha(borderLighter, 0.72);
@@ -462,7 +419,7 @@ function updateVisitTrendChartOptions(d: VisitTrendDetail) {
       extraCssText: "box-shadow: var(--el-box-shadow-light); border-radius: 6px;",
     },
     legend: {
-      data: ["浏览量", "访客量"],
+      data: ["新增用户"],
       bottom: 0,
       textStyle: { fontSize: 12, color: textSecondary },
       itemWidth: 10,
@@ -487,9 +444,9 @@ function updateVisitTrendChartOptions(d: VisitTrendDetail) {
     },
     series: [
       {
-        name: "浏览量",
+        name: "新增用户",
         type: "line",
-        data: d.pvList,
+        data: d.counts,
         smooth: true,
         symbol: "circle",
         symbolSize: 5,
@@ -508,30 +465,6 @@ function updateVisitTrendChartOptions(d: VisitTrendDetail) {
               { offset: 0, color: colorWithAlpha(primary, 0.18) },
               { offset: 0.52, color: colorWithAlpha(primary, 0.08) },
               { offset: 1, color: colorWithAlpha(primary, 0.01) },
-            ],
-          },
-        },
-      },
-      {
-        name: "访客量",
-        type: "line",
-        data: d.uvList,
-        smooth: true,
-        symbol: "circle",
-        symbolSize: 5,
-        showSymbol: false,
-        lineStyle: { color: colorWithAlpha(success, 0.9), width: 1.8, opacity: 0.86 },
-        itemStyle: { color: success },
-        areaStyle: {
-          color: {
-            type: "linear",
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: colorWithAlpha(success, 0.08) },
-              { offset: 1, color: colorWithAlpha(success, 0) },
             ],
           },
         },
@@ -557,7 +490,7 @@ watch(
   { deep: true }
 );
 onMounted(() => {
-  fetchVisitOverviewData();
+  fetchStatsData();
 });
 </script>
 

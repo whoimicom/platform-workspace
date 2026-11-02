@@ -5,13 +5,13 @@
         <el-form-item label="关键字" prop="keywords">
           <el-input
             v-model="queryParams.keywords"
-            placeholder="部门名称"
+            placeholder="架构名称"
             clearable
             @keyup.enter="handleQuery"
           />
         </el-form-item>
 
-        <el-form-item label="部门状态" prop="status">
+        <el-form-item label="架构状态" prop="status">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 100px">
             <el-option :value="CommonStatus.ENABLED" label="正常" />
             <el-option :value="CommonStatus.DISABLED" label="禁用" />
@@ -28,11 +28,11 @@
     <el-card ref="tableWrapperRef" class="page-content" shadow="never">
       <div class="page-toolbar">
         <div class="page-toolbar__left">
-          <el-button v-hasPerm="['sys:dept:create']" type="primary" @click="openDialog()">
+          <el-button v-hasPerm="['sys:org:create']" type="primary" @click="openDialog()">
             新增
           </el-button>
           <el-button
-            v-hasPerm="['sys:dept:delete']"
+            v-hasPerm="['sys:org:delete']"
             type="danger"
             :disabled="!hasSelection"
             @click="handleDelete()"
@@ -75,8 +75,8 @@
           @selection-change="handleSelectionChange"
         >
           <el-table-column type="selection" width="55" align="center" />
-          <el-table-column prop="name" label="部门名称" min-width="200" />
-          <el-table-column prop="code" label="部门编号" width="200" />
+          <el-table-column prop="name" label="架构名称" min-width="200" />
+          <el-table-column prop="code" label="架构编号" width="200" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="scope">
               <el-tag v-if="scope.row.status === CommonStatus.ENABLED" type="success">正常</el-tag>
@@ -89,7 +89,7 @@
           <el-table-column label="操作" fixed="right" align="left" width="200">
             <template #default="scope">
               <el-button
-                v-hasPerm="['sys:dept:create']"
+                v-hasPerm="['sys:org:create']"
                 type="primary"
                 link
                 size="small"
@@ -98,7 +98,7 @@
                 新增
               </el-button>
               <el-button
-                v-hasPerm="['sys:dept:update']"
+                v-hasPerm="['sys:org:update']"
                 type="primary"
                 link
                 size="small"
@@ -107,7 +107,7 @@
                 编辑
               </el-button>
               <el-button
-                v-hasPerm="['sys:dept:delete']"
+                v-hasPerm="['sys:org:delete']"
                 type="danger"
                 link
                 size="small"
@@ -127,22 +127,22 @@
       width="600px"
       @closed="closeDialog"
     >
-      <el-form ref="deptFormRef" :model="formData" :rules="rules" label-width="80px">
-        <el-form-item label="上级部门" prop="parentId">
+      <el-form ref="orgFormRef" :model="formData" :rules="rules" label-width="80px">
+        <el-form-item label="上级架构" prop="parentId">
           <el-tree-select
             v-model="formData.parentId"
-            placeholder="选择上级部门"
-            :data="deptOptions"
+            placeholder="选择上级架构"
+            :data="orgOptions"
             filterable
             check-strictly
             :render-after-expand="false"
           />
         </el-form-item>
-        <el-form-item label="部门名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入部门名称" />
+        <el-form-item label="架构名称" prop="name">
+          <el-input v-model="formData.name" placeholder="请输入架构名称" />
         </el-form-item>
-        <el-form-item label="部门编号" prop="code">
-          <el-input v-model="formData.code" placeholder="请输入部门编码" />
+        <el-form-item label="架构编号" prop="code">
+          <el-input v-model="formData.code" placeholder="请输入架构编码" />
         </el-form-item>
         <el-form-item label="显示排序" prop="sort">
           <el-input-number
@@ -152,7 +152,7 @@
             :min="0"
           />
         </el-form-item>
-        <el-form-item label="部门状态">
+        <el-form-item label="架构状态">
           <el-radio-group v-model="formData.status">
             <el-radio :value="CommonStatus.ENABLED">正常</el-radio>
             <el-radio :value="CommonStatus.DISABLED">禁用</el-radio>
@@ -180,14 +180,14 @@ import {
 } from "element-plus";
 import { Refresh, FullScreen } from "@element-plus/icons-vue";
 
-import DeptAPI from "@/api/system/dept";
-import type { DeptForm, DeptItem, DeptQuery } from "@/api/system/dept";
+import OrgAPI from "@/api/system/org";
+import type { OrgForm, OrgItem, OrgQuery } from "@/api/system/org";
 import type { OptionItem } from "@/api/common";
 import { useTableSelection } from "@/composables";
 import { CommonStatus } from "@/enums";
 
 defineOptions({
-  name: "Dept",
+  name: "Org",
   inheritAttrs: false,
 });
 
@@ -195,56 +195,56 @@ const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 
 const queryFormRef = ref<FormInstance>();
-const deptFormRef = ref<FormInstance>();
+const orgFormRef = ref<FormInstance>();
 const tableRef = ref<TableInstance>();
-// 是否展开全部部门层级，默认展开
+// 是否展开全部架构层级，默认展开
 const expandAll = ref(true);
 
 const loading = ref(false);
-const list = ref<DeptItem[]>([]);
-const queryParams = reactive<DeptQuery>({
+const list = ref<OrgItem[]>([]);
+const queryParams = reactive<OrgQuery>({
   keywords: "",
   status: undefined,
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<DeptItem>();
+const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<OrgItem>();
 
 const dialogState = reactive({
   title: "",
   visible: false,
 });
 
-const deptOptions = ref<OptionItem[]>([]);
+const orgOptions = ref<OptionItem[]>([]);
 
-const initialFormData: DeptForm = {
+const initialFormData: OrgForm = {
   status: CommonStatus.ENABLED,
   parentId: "0",
   sort: 1,
 };
 
-const formData = reactive<DeptForm>({ ...initialFormData });
+const formData = reactive<OrgForm>({ ...initialFormData });
 
-const rules: FormRules<DeptForm> = {
-  parentId: [{ required: true, message: "上级部门不能为空", trigger: "change" }],
-  name: [{ required: true, message: "部门名称不能为空", trigger: "blur" }],
-  code: [{ required: true, message: "部门编号不能为空", trigger: "blur" }],
+const rules: FormRules<OrgForm> = {
+  parentId: [{ required: true, message: "上级架构不能为空", trigger: "change" }],
+  name: [{ required: true, message: "架构名称不能为空", trigger: "blur" }],
+  code: [{ required: true, message: "架构编号不能为空", trigger: "blur" }],
   sort: [{ required: true, message: "显示排序不能为空", trigger: "blur" }],
 };
 
 /**
- * 拉取部门列表数据（一次性返回全量树）
+ * 拉取架构列表数据（一次性返回全量树）
  */
 async function fetchData(): Promise<void> {
   loading.value = true;
   try {
-    list.value = await DeptAPI.getList(queryParams);
+    list.value = await OrgAPI.getList(queryParams);
   } finally {
     loading.value = false;
   }
 }
 
 /**
- * 展开/折叠全部部门层级
+ * 展开/折叠全部架构层级
  */
 function toggleExpandAll(): void {
   expandAll.value = !expandAll.value;
@@ -252,13 +252,13 @@ function toggleExpandAll(): void {
 }
 
 /**
- * 按当前开关应用展开状态，逐级下发到所有部门节点
+ * 按当前开关应用展开状态，逐级下发到所有架构节点
  */
 function applyExpansion(): void {
   /**
    * 递归展开树节点
    */
-  const walk = (rows: DeptItem[]): void => {
+  const walk = (rows: OrgItem[]): void => {
     rows.forEach((row) => {
       if (!row.children?.length) return;
 
@@ -289,8 +289,8 @@ function handleResetQuery(): void {
  * 重置表单数据和验证状态
  */
 function resetForm(): void {
-  deptFormRef.value?.resetFields();
-  deptFormRef.value?.clearValidate();
+  orgFormRef.value?.resetFields();
+  orgFormRef.value?.clearValidate();
   Object.keys(formData).forEach((key) => {
     delete (formData as Record<string, unknown>)[key];
   });
@@ -298,37 +298,37 @@ function resetForm(): void {
 }
 
 /**
- * 打开新增/编辑部门弹窗
+ * 打开新增/编辑架构弹窗
  *
- * @param parentId 父部门 ID（新增子部门时传入）
- * @param deptId 部门 ID（编辑时传入）
+ * @param parentId 父架构 ID（新增子架构时传入）
+ * @param orgId 架构 ID（编辑时传入）
  */
-async function openDialog(parentId?: string, deptId?: string): Promise<void> {
-  const data = await DeptAPI.getOptions();
-  deptOptions.value = [
+async function openDialog(parentId?: string, orgId?: string): Promise<void> {
+  const data = await OrgAPI.getOptions();
+  orgOptions.value = [
     {
       value: "0",
-      label: "顶级部门",
+      label: "顶级架构",
       children: data,
     },
   ];
 
   dialogState.visible = true;
-  if (deptId) {
-    dialogState.title = "修改部门";
-    const form = await DeptAPI.getFormData(deptId);
+  if (orgId) {
+    dialogState.title = "修改架构";
+    const form = await OrgAPI.getFormData(orgId);
     Object.assign(formData, form);
   } else {
-    dialogState.title = "新增部门";
+    dialogState.title = "新增架构";
     formData.parentId = parentId || "0";
   }
 }
 
 /**
- * 校验并提交部门表单
+ * 校验并提交架构表单
  */
 async function handleSubmit(): Promise<void> {
-  const valid = await deptFormRef.value?.validate().then(
+  const valid = await orgFormRef.value?.validate().then(
     () => true,
     () => false
   );
@@ -336,12 +336,12 @@ async function handleSubmit(): Promise<void> {
 
   loading.value = true;
   try {
-    const deptId = formData.id;
-    if (deptId) {
-      await DeptAPI.update(deptId, formData);
+    const orgId = formData.id;
+    if (orgId) {
+      await OrgAPI.update(orgId, formData);
       ElMessage.success("修改成功");
     } else {
-      await DeptAPI.create(formData);
+      await OrgAPI.create(formData);
       ElMessage.success("新增成功");
     }
     closeDialog();
@@ -352,13 +352,13 @@ async function handleSubmit(): Promise<void> {
 }
 
 /**
- * 删除单个或批量部门
+ * 删除单个或批量架构
  *
- * @param deptId 指定时删除单个部门；不指定时删除表格勾选项
+ * @param orgId 指定时删除单个架构；不指定时删除表格勾选项
  */
-async function handleDelete(deptId?: string): Promise<void> {
-  const deptIds = deptId ?? selectedIds.value.join(",");
-  if (!deptIds) {
+async function handleDelete(orgId?: string): Promise<void> {
+  const orgIds = orgId ?? selectedIds.value.join(",");
+  if (!orgIds) {
     ElMessage.warning("请勾选删除项");
     return;
   }
@@ -376,7 +376,7 @@ async function handleDelete(deptId?: string): Promise<void> {
 
   loading.value = true;
   try {
-    await DeptAPI.deleteByIds(deptIds);
+    await OrgAPI.deleteByIds(orgIds);
     ElMessage.success("删除成功");
     handleResetQuery();
   } finally {

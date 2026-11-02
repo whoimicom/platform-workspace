@@ -3,7 +3,7 @@
   <div class="page-container page-container--split user-page">
     <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
       <div class="page-aside__inner">
-        <UserDeptTree v-model="params.deptId" @node-click="handleQuery" />
+        <UserOrgTree v-model="params.orgId" @node-click="handleQuery" />
       </div>
       <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
         <el-icon :size="14">
@@ -148,7 +148,7 @@
                 <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column label="部门" min-width="140" prop="deptName" show-overflow-tooltip />
+            <el-table-column label="架构" min-width="140" prop="orgName" show-overflow-tooltip />
             <el-table-column label="角色" prop="roleNames" min-width="160" show-overflow-tooltip />
             <el-table-column label="手机号码" prop="mobile" width="130" />
             <el-table-column label="邮箱" prop="email" min-width="180" show-overflow-tooltip />
@@ -193,11 +193,11 @@
           <el-input v-model="formData.nickname" placeholder="请输入用户昵称" />
         </el-form-item>
 
-        <el-form-item label="所属部门" prop="deptId">
+        <el-form-item label="所属架构" prop="orgId">
           <el-tree-select
-            v-model="formData.deptId"
-            placeholder="请选择所属部门"
-            :data="deptOptions"
+            v-model="formData.orgId"
+            placeholder="请选择所属架构"
+            :data="orgOptions"
             filterable
             check-strictly
             :render-after-expand="false"
@@ -303,7 +303,7 @@
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 
 import UserAPI from "@/api/system/user";
-import DeptAPI from "@/api/system/dept";
+import OrgAPI from "@/api/system/org";
 import RoleAPI from "@/api/system/role";
 import type { UserForm, UserItem, UserQuery } from "@/api/system/user";
 import type { OptionItem } from "@/api/common";
@@ -315,7 +315,7 @@ import { hasPerm } from "@/utils/permission";
 
 import TableActions from "@/components/TableActions/index.vue";
 import type { TableAction } from "@/components/TableActions/types";
-import UserDeptTree from "./components/UserDeptTree.vue";
+import UserOrgTree from "./components/UserOrgTree.vue";
 import UserImportDialog from "./components/UserImportDialog.vue";
 
 defineOptions({
@@ -379,7 +379,7 @@ const resetPasswordForm = reactive<ResetPasswordForm>({
   password: "",
 });
 
-const deptOptions = ref<OptionItem[]>([]);
+const orgOptions = ref<OptionItem[]>([]);
 const roleOptions = ref<OptionItem[]>([]);
 
 const drawerSize = computed(() => (appStore.device === DeviceEnum.DESKTOP ? "600px" : "90%"));
@@ -391,7 +391,7 @@ const resetPasswordDialogWidth = computed(() =>
 const rules: FormRules<UserForm> = {
   username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
   nickname: [{ required: true, message: "请输入用户昵称", trigger: "blur" }],
-  deptId: [{ required: true, message: "请选择所属部门", trigger: "change" }],
+  orgId: [{ required: true, message: "请选择所属架构", trigger: "change" }],
   roleIds: [{ required: true, message: "请选择用户角色", trigger: "change" }],
   email: [{ type: "email", message: "请输入正确的邮箱地址", trigger: "blur" }],
   mobile: [{ pattern: /^1[3-9]\d{9}$/, message: "请输入正确的手机号码", trigger: "blur" }],
@@ -415,12 +415,12 @@ function getAvatarText(row: UserItem): string {
 }
 
 /**
- * 加载表单所需的下拉选项（角色 + 部门），并行请求
+ * 加载表单所需的下拉选项（角色 + 架构），并行请求
  */
 async function loadFormOptions(): Promise<void> {
-  [roleOptions.value, deptOptions.value] = await Promise.all([
+  [roleOptions.value, orgOptions.value] = await Promise.all([
     RoleAPI.getOptions(),
-    DeptAPI.getOptions(),
+    OrgAPI.getOptions(),
   ]);
 }
 

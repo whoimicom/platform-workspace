@@ -22,7 +22,7 @@ export interface RoleItem {
   sort?: number;
   /** 角色状态 */
   status?: number;
-  /** 数据权限(1-所有数据 2-部门及子部门数据 3-本部门数据 4-本人数据 5-自定义部门数据) */
+  /** 数据权限(1-所有数据 2-架构及子架构数据 3-本架构数据 4-本人数据 5-自定义架构数据) */
   dataScope?: number;
   /** 数据权限标签 */
   dataScopeLabel?: string;
@@ -42,10 +42,10 @@ export interface RoleForm {
   name?: string;
   /** 排序 */
   sort?: number;
-  /** 数据权限(1-所有数据 2-部门及子部门数据 3-本部门数据 4-本人数据 5-自定义部门数据) */
+  /** 数据权限(1-所有数据 2-架构及子架构数据 3-本架构数据 4-本人数据 5-自定义架构数据) */
   dataScope?: number;
-  /** 自定义数据权限部门 ID 列表(当 dataScope=5 时有效) */
-  deptIds?: string[];
+  /** 自定义数据权限架构 ID 列表(当 dataScope=5 时有效) */
+  orgIds?: string[];
   /** 角色状态 */
   status?: number;
   /** 备注 */

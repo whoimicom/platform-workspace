@@ -1,7 +1,7 @@
 /**
- * 部门查询参数
+ * 架构查询参数
  */
-export interface DeptQuery {
+export interface OrgQuery {
   /** 搜索关键字 */
   keywords?: string;
   /** 状态 */
@@ -9,18 +9,18 @@ export interface DeptQuery {
 }
 
 /**
- * 部门视图对象
+ * 架构视图对象
  */
-export interface DeptItem {
-  /** 子部门 */
-  children?: DeptItem[];
+export interface OrgItem {
+  /** 子架构 */
+  children?: OrgItem[];
   /** 创建时间 */
   createTime?: Date;
-  /** 部门 ID */
+  /** 架构 ID */
   id?: string;
-  /** 部门名称 */
+  /** 架构名称 */
   name?: string;
-  /** 父部门 ID */
+  /** 父架构 ID */
   parentId?: string;
   /** 排序 */
   sort?: number;
@@ -33,16 +33,16 @@ export interface DeptItem {
 }
 
 /**
- * 部门表单对象
+ * 架构表单对象
  */
-export interface DeptForm {
-  /** 部门 ID */
+export interface OrgForm {
+  /** 架构 ID */
   id?: string;
-  /** 部门名称 */
+  /** 架构名称 */
   name?: string;
-  /** 部门编号 */
+  /** 架构编号 */
   code?: string;
-  /** 父部门 ID */
+  /** 父架构 ID */
   parentId?: string;
   /** 排序 */
   sort?: number;

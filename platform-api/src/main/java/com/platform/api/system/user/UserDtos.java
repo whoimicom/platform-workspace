@@ -17,17 +17,17 @@ public final class UserDtos {
     private UserDtos() {
     }
 
-    public record UserItem(String id, String avatar, String createTime, String deptName,
+    public record UserItem(String id, String avatar, String createTime, String orgName,
                            String email, Integer gender, String mobile, String nickname,
                            String roleNames, Integer status, String username) {
     }
 
     public record UserInfo(String userId, String username, String nickname, String avatar,
-                           Integer gender, String deptName, List<String> roles, List<String> roleNames,
+                           Integer gender, String orgName, List<String> roles, List<String> roleNames,
                            List<String> perms, Boolean canSwitchTenant) {
     }
 
-    public record UserForm(String id, String avatar, String deptId, String email, Integer gender,
+    public record UserForm(String id, String avatar, String orgId, String email, Integer gender,
                            String mobile, String nickname, List<String> roleIds, Integer status,
                            String username) {
     }
@@ -49,8 +49,8 @@ public final class UserDtos {
         @QueryField(value = "u.status")
         private Integer status;
 
-        @QueryField(value = "u.dept_id")
-        private String deptId;
+        @QueryField(value = "u.org_id")
+        private String orgId;
 
         /** 由 createTime 区间拆分，GE u.create_time */
         @QueryField(value = "u.create_time", op = Op.GE)

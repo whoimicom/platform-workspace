@@ -1,9 +1,10 @@
-package com.platform.api.system.dept;
+package com.platform.api.system.org;
 
 import com.platform.api.common.BusinessException;
 import com.platform.api.common.IdUtils;
 import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
+import com.platform.api.security.LoginUser;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -19,35 +20,60 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class DeptService {
+public class OrgService {
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final OrgScope orgScope;
 
-    public DeptService(NamedParameterJdbcTemplate jdbc) {
+    public OrgService(NamedParameterJdbcTemplate jdbc, OrgScope orgScope) {
         this.jdbc = jdbc;
+        this.orgScope = orgScope;
     }
 
-    public List<DeptDtos.DeptItem> tree(String keywords, Integer status) {
-        List<DeptRow> rows = loadRows();
-        java.util.function.Predicate<DeptRow> predicate = row -> {
+    public List<OrgDtos.OrgItem> tree(String keywords, Integer status, LoginUser loginUser) {
+        List<OrgRow> rows = loadRows();
+        long base = 0L;
+        OrgScope.Scope scope = orgScope.scopeOf(loginUser);
+        if (scope != null) {
+            OrgScope.Scope finalScope = scope;
+            rows = rows.stream()
+                    .filter(row -> row.id() == finalScope.rootId()
+                            || (row.treePath() != null && row.treePath().startsWith(finalScope.path() + ",")))
+                    .toList();
+            base = rows.stream().filter(row -> row.id() == finalScope.rootId())
+                    .findFirst().map(OrgRow::parentId).orElse(0L);
+        }
+        java.util.function.Predicate<OrgRow> predicate = row -> {
             boolean keywordMatched = keywords == null || keywords.isBlank()
                     || (row.name() != null && row.name().contains(keywords.trim()));
             boolean statusMatched = status == null || (row.status() != null && row.status().equals(status));
             return keywordMatched && statusMatched;
         };
-        return build(rows, 0L, predicate);
+        return build(rows, base, predicate);
     }
 
-    public List<OptionItem> options() {
-        List<DeptRow> rows = loadRows();
-        return buildOptions(rows, 0L);
+    public List<OptionItem> options(LoginUser loginUser) {
+        List<OrgRow> rows = loadRows();
+        long base = 0L;
+        OrgScope.Scope scope = orgScope.scopeOf(loginUser);
+        if (scope != null) {
+            OrgScope.Scope finalScope = scope;
+            rows = rows.stream()
+                    .filter(row -> row.id() == finalScope.rootId()
+                            || (row.treePath() != null && row.treePath().startsWith(finalScope.path() + ",")))
+                    .toList();
+            base = rows.stream().filter(row -> row.id() == finalScope.rootId())
+                    .findFirst().map(OrgRow::parentId).orElse(0L);
+        }
+        return buildOptions(rows, base);
     }
 
-    public DeptDtos.DeptForm form(Long id) {
-        List<DeptDtos.DeptForm> rows = jdbc.query(
-                "SELECT id, name, code, parent_id, sort, status FROM sys_dept WHERE id = :id",
+    public OrgDtos.OrgForm form(Long id, LoginUser loginUser) {
+        orgScope.check(loginUser, id);
+        List<OrgDtos.OrgForm> rows = jdbc.query(
+                "SELECT id, name, code, parent_id, sort, status FROM sys_org WHERE id = :id",
                 Map.of("id", id),
-                (rs, rowNum) -> new DeptDtos.DeptForm(
+                (rs, rowNum) -> new OrgDtos.OrgForm(
                         String.valueOf(rs.getLong("id")),
                         rs.getString("name"),
                         rs.getString("code"),
@@ -55,15 +81,16 @@ public class DeptService {
                         JdbcUtil.getInt(rs, "sort"),
                         JdbcUtil.getInt(rs, "status")));
         if (rows.isEmpty()) {
-            throw BusinessException.notFound("部门不存在");
+            throw BusinessException.notFound("架构不存在");
         }
         return rows.get(0);
     }
 
     @Transactional
-    public void create(DeptDtos.DeptForm form) {
+    public void create(OrgDtos.OrgForm form, LoginUser loginUser) {
         validate(form);
         Long parentId = resolveParentId(form.parentId());
+        orgScope.check(loginUser, parentId == 0L ? null : parentId);
         ensureParentExists(parentId);
 
         MapSqlParameterSource params = new MapSqlParameterSource();
@@ -76,7 +103,7 @@ public class DeptService {
         params.addValue("updateTime", LocalDateTime.now());
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update("INSERT INTO sys_dept (parent_id, name, code, sort, status, create_time, update_time) "
+        jdbc.update("INSERT INTO sys_org (parent_id, name, code, sort, status, create_time, update_time) "
                         + "VALUES (:parentId, :name, :code, :sort, :status, :createTime, :updateTime)",
                 params, keyHolder, new String[]{"id"});
 
@@ -87,15 +114,17 @@ public class DeptService {
     }
 
     @Transactional
-    public void update(Long id, DeptDtos.DeptForm form) {
+    public void update(Long id, OrgDtos.OrgForm form, LoginUser loginUser) {
+        orgScope.check(loginUser, id);
         if (!exists(id)) {
-            throw BusinessException.notFound("部门不存在");
+            throw BusinessException.notFound("架构不存在");
         }
         validate(form);
         Long parentId = resolveParentId(form.parentId());
         if (parentId == id) {
-            throw BusinessException.badRequest("上级部门不能是自身");
+            throw BusinessException.badRequest("上级架构不能是自身");
         }
+        orgScope.check(loginUser, parentId == 0L ? null : parentId);
         ensureParentExists(parentId);
 
         MapSqlParameterSource params = new MapSqlParameterSource();
@@ -106,40 +135,43 @@ public class DeptService {
         params.addValue("status", form.status() == null ? 1 : form.status());
         params.addValue("updateTime", LocalDateTime.now());
         params.addValue("id", id);
-        jdbc.update("UPDATE sys_dept SET parent_id = :parentId, name = :name, code = :code, "
+        jdbc.update("UPDATE sys_org SET parent_id = :parentId, name = :name, code = :code, "
                 + "sort = :sort, status = :status, update_time = :updateTime WHERE id = :id", params);
         updateTreePath(id);
         updateChildTreePaths(id);
     }
 
     @Transactional
-    public void delete(String ids) {
+    public void delete(String ids, LoginUser loginUser) {
         List<Long> idList = IdUtils.parse(ids);
         if (idList.isEmpty()) {
-            throw BusinessException.badRequest("请选择要删除的部门");
+            throw BusinessException.badRequest("请选择要删除的架构");
+        }
+        for (Long id : idList) {
+            orgScope.check(loginUser, id);
         }
         Map<String, Object> params = Map.of("ids", idList);
         Long children = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_dept WHERE parent_id IN (:ids)", params, Long.class);
+                "SELECT COUNT(*) FROM sys_org WHERE parent_id IN (:ids)", params, Long.class);
         if (children != null && children > 0) {
-            throw BusinessException.badRequest("请先删除子部门");
+            throw BusinessException.badRequest("请先删除子架构");
         }
         Long users = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_user WHERE dept_id IN (:ids)", params, Long.class);
+                "SELECT COUNT(*) FROM sys_user WHERE org_id IN (:ids)", params, Long.class);
         if (users != null && users > 0) {
-            throw BusinessException.badRequest("部门下存在用户，无法删除");
+            throw BusinessException.badRequest("架构下存在用户，无法删除");
         }
-        jdbc.update("DELETE FROM sys_role_dept WHERE dept_id IN (:ids)", params);
-        jdbc.update("DELETE FROM sys_dept WHERE id IN (:ids)", params);
+        jdbc.update("DELETE FROM sys_role_org WHERE org_id IN (:ids)", params);
+        jdbc.update("DELETE FROM sys_org WHERE id IN (:ids)", params);
     }
 
-    private List<DeptRow> loadRows() {
+    private List<OrgRow> loadRows() {
         return jdbc.query(
                 "SELECT id, parent_id, name, code, sort, status, tree_path, "
                         + "DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time, "
                         + "DATE_FORMAT(update_time, '%Y-%m-%d %H:%i:%s') AS update_time "
-                        + "FROM sys_dept ORDER BY sort ASC, id ASC",
-                new HashMap<>(), (rs, rowNum) -> new DeptRow(
+                        + "FROM sys_org ORDER BY sort ASC, id ASC",
+                new HashMap<>(), (rs, rowNum) -> new OrgRow(
                 rs.getLong("id"),
                 rs.getLong("parent_id"),
                 rs.getString("name"),
@@ -154,14 +186,14 @@ public class DeptService {
     /**
      * 命中节点保留祖先链，保证树形结构完整。
      */
-    private List<DeptDtos.DeptItem> build(List<DeptRow> rows, long parentId,
-                                          java.util.function.Predicate<DeptRow> predicate) {
-        Map<Long, List<DeptRow>> grouped = new HashMap<>();
+    private List<OrgDtos.OrgItem> build(List<OrgRow> rows, long parentId,
+                                        java.util.function.Predicate<OrgRow> predicate) {
+        Map<Long, List<OrgRow>> grouped = new HashMap<>();
         rows.forEach(row -> grouped.computeIfAbsent(row.parentId(), key -> new ArrayList<>()).add(row));
 
-        List<DeptDtos.DeptItem> result = new ArrayList<>();
-        for (DeptRow row : grouped.getOrDefault(parentId, List.of())) {
-            List<DeptDtos.DeptItem> children = build(rows, row.id(), predicate);
+        List<OrgDtos.OrgItem> result = new ArrayList<>();
+        for (OrgRow row : grouped.getOrDefault(parentId, List.of())) {
+            List<OrgDtos.OrgItem> children = build(rows, row.id(), predicate);
             if (predicate.test(row) || !children.isEmpty()) {
                 result.add(toItem(row, children));
             }
@@ -170,15 +202,15 @@ public class DeptService {
         return result;
     }
 
-    private DeptDtos.DeptItem toItem(DeptRow row, List<DeptDtos.DeptItem> children) {
-        return new DeptDtos.DeptItem(String.valueOf(row.id()), String.valueOf(row.parentId()),
+    private OrgDtos.OrgItem toItem(OrgRow row, List<OrgDtos.OrgItem> children) {
+        return new OrgDtos.OrgItem(String.valueOf(row.id()), String.valueOf(row.parentId()),
                 row.name(), row.sort(), row.status(), row.treePath(),
                 row.createTime(), row.updateTime(), children);
     }
 
-    private List<OptionItem> buildOptions(List<DeptRow> rows, long parentId) {
+    private List<OptionItem> buildOptions(List<OrgRow> rows, long parentId) {
         List<OptionItem> result = new ArrayList<>();
-        for (DeptRow row : rows) {
+        for (OrgRow row : rows) {
             if (row.parentId() != parentId) {
                 continue;
             }
@@ -189,7 +221,7 @@ public class DeptService {
 
     private void updateTreePath(Long id) {
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT parent_id FROM sys_dept WHERE id = :id", Map.of("id", id));
+                "SELECT parent_id FROM sys_org WHERE id = :id", Map.of("id", id));
         if (rows.isEmpty()) {
             return;
         }
@@ -199,18 +231,18 @@ public class DeptService {
             treePath = String.valueOf(id);
         } else {
             List<Map<String, Object>> parents = jdbc.queryForList(
-                    "SELECT tree_path FROM sys_dept WHERE id = :id", Map.of("id", parentId));
+                    "SELECT tree_path FROM sys_org WHERE id = :id", Map.of("id", parentId));
             String parentPath = parents.isEmpty() || parents.get(0).get("tree_path") == null
                     ? String.valueOf(parentId) : parents.get(0).get("tree_path").toString();
             treePath = parentPath + "," + id;
         }
-        jdbc.update("UPDATE sys_dept SET tree_path = :treePath WHERE id = :id",
+        jdbc.update("UPDATE sys_org SET tree_path = :treePath WHERE id = :id",
                 Map.of("treePath", treePath, "id", id));
     }
 
     private void updateChildTreePaths(Long parentId) {
         List<Long> childIds = jdbc.queryForList(
-                "SELECT id FROM sys_dept WHERE parent_id = :parentId", Map.of("parentId", parentId), Long.class);
+                "SELECT id FROM sys_org WHERE parent_id = :parentId", Map.of("parentId", parentId), Long.class);
         for (Long childId : childIds) {
             updateTreePath(childId);
             updateChildTreePaths(childId);
@@ -227,23 +259,23 @@ public class DeptService {
             return;
         }
         if (!exists(parentId)) {
-            throw BusinessException.badRequest("上级部门不存在");
+            throw BusinessException.badRequest("上级架构不存在");
         }
     }
 
     private boolean exists(Long id) {
-        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_dept WHERE id = :id",
+        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_org WHERE id = :id",
                 Map.of("id", id), Long.class);
         return count != null && count > 0;
     }
 
-    private void validate(DeptDtos.DeptForm form) {
+    private void validate(OrgDtos.OrgForm form) {
         if (form.name() == null || form.name().isBlank()) {
-            throw BusinessException.badRequest("部门名称不能为空");
+            throw BusinessException.badRequest("架构名称不能为空");
         }
     }
 
-    private record DeptRow(long id, long parentId, String name, String code, Integer sort, Integer status,
-                           String treePath, String createTime, String updateTime) {
+    private record OrgRow(long id, long parentId, String name, String code, Integer sort, Integer status,
+                          String treePath, String createTime, String updateTime) {
     }
 }

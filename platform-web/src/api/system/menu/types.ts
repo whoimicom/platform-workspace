@@ -46,6 +46,8 @@ export interface MenuItem {
   visible?: number;
   /** 菜单范围(1=平台 2=业务) */
   scope?: number;
+  /** 归属架构 ID（"0" 表示全局） */
+  orgId?: string;
 }
 
 /**
@@ -80,6 +82,8 @@ export interface MenuForm {
   visible?: number;
   /** 菜单范围(1=平台 2=业务) */
   scope?: number;
+  /** 归属架构 ID（"0" 或未选表示全局） */
+  orgId?: string;
   /** 按钮权限标识 */
   perm?: string;
   /** 路由参数（用于表单编辑 params） */

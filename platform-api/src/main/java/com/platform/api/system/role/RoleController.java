@@ -54,10 +54,10 @@ public class RoleController {
         return ResultInfo.ok();
     }
 
-    @GetMapping("/{roleId}/dept-ids")
+    @GetMapping("/{roleId}/org-ids")
     @PreAuthorize("@perm.has('sys:role:list')")
-    public ResultInfo<List<String>> deptIds(@PathVariable Long roleId) {
-        return ResultInfo.ok(roleService.deptIds(roleId));
+    public ResultInfo<List<String>> orgIds(@PathVariable Long roleId) {
+        return ResultInfo.ok(roleService.orgIds(roleId));
     }
 
     @GetMapping("/{id}/form")

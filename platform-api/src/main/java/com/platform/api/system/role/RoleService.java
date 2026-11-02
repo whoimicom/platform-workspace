@@ -27,10 +27,10 @@ public class RoleService {
 
     private static final Map<Integer, String> DATA_SCOPE_LABELS = Map.of(
             1, "全部数据",
-            2, "部门及子部门数据",
-            3, "本部门数据",
+            2, "架构及子架构数据",
+            3, "本架构数据",
             4, "本人数据",
-            5, "自定义部门数据");
+            5, "自定义架构数据");
 
     private static final RowMapper<RoleDtos.RoleItem> ROLE_ITEM_MAPPER = (rs, rowNum) -> {
         Integer dataScope = JdbcUtil.getInt(rs, "data_scope");
@@ -98,7 +98,7 @@ public class RoleService {
         }
         RoleDtos.RoleForm role = rows.get(0);
         return new RoleDtos.RoleForm(role.id(), role.code(), role.name(), role.sort(), role.status(),
-                role.dataScope(), deptIds(id), role.remark());
+                role.dataScope(), orgIds(id), role.remark());
     }
 
     public List<String> menuIds(Long roleId) {
@@ -107,8 +107,8 @@ public class RoleService {
                 .stream().map(String::valueOf).toList();
     }
 
-    public List<String> deptIds(Long roleId) {
-        return jdbc.queryForList("SELECT dept_id FROM sys_role_dept WHERE role_id = :roleId",
+    public List<String> orgIds(Long roleId) {
+        return jdbc.queryForList("SELECT org_id FROM sys_role_org WHERE role_id = :roleId",
                         Map.of("roleId", roleId), Long.class)
                 .stream().map(String::valueOf).toList();
     }
@@ -129,7 +129,7 @@ public class RoleService {
 
         Number key = keyHolder.getKey();
         if (key != null) {
-            replaceDepts(key.longValue(), form);
+            replaceOrgs(key.longValue(), form);
         }
     }
 
@@ -146,7 +146,7 @@ public class RoleService {
         params.addValue("id", id);
         jdbc.update("UPDATE sys_role SET code = :code, name = :name, sort = :sort, status = :status, "
                 + "data_scope = :dataScope, remark = :remark, update_time = :updateTime WHERE id = :id", params);
-        replaceDepts(id, form);
+        replaceOrgs(id, form);
     }
 
     @Transactional
@@ -158,7 +158,7 @@ public class RoleService {
         Map<String, Object> params = Map.of("ids", idList);
         jdbc.update("DELETE FROM sys_user_role WHERE role_id IN (:ids)", params);
         jdbc.update("DELETE FROM sys_role_menu WHERE role_id IN (:ids)", params);
-        jdbc.update("DELETE FROM sys_role_dept WHERE role_id IN (:ids)", params);
+        jdbc.update("DELETE FROM sys_role_org WHERE role_id IN (:ids)", params);
         jdbc.update("DELETE FROM sys_role WHERE id IN (:ids)", params);
     }
 
@@ -176,16 +176,16 @@ public class RoleService {
         }
     }
 
-    private void replaceDepts(Long roleId, RoleDtos.RoleForm form) {
-        jdbc.update("DELETE FROM sys_role_dept WHERE role_id = :roleId", Map.of("roleId", roleId));
-        if (form.dataScope() == null || form.dataScope() != 5 || form.deptIds() == null) {
+    private void replaceOrgs(Long roleId, RoleDtos.RoleForm form) {
+        jdbc.update("DELETE FROM sys_role_org WHERE role_id = :roleId", Map.of("roleId", roleId));
+        if (form.dataScope() == null || form.dataScope() != 5 || form.orgIds() == null) {
             return;
         }
-        for (String deptId : form.deptIds()) {
-            Long parsed = IdUtils.parseLong(deptId);
+        for (String orgId : form.orgIds()) {
+            Long parsed = IdUtils.parseLong(orgId);
             if (parsed != null) {
-                jdbc.update("INSERT INTO sys_role_dept (role_id, dept_id) VALUES (:roleId, :deptId)",
-                        Map.of("roleId", roleId, "deptId", parsed));
+                jdbc.update("INSERT INTO sys_role_org (role_id, org_id) VALUES (:roleId, :orgId)",
+                        Map.of("roleId", roleId, "orgId", parsed));
             }
         }
     }

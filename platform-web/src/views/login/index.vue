@@ -15,30 +15,21 @@
         </div>
 
         <div class="login-brand__hero">
-          <el-tag class="login-brand__tag" type="primary" effect="plain" round>
-            <span class="login-brand__tag-dot" />
-            Enterprise Ready
-          </el-tag>
-          <h1 class="login-brand__title">开箱即用的企业级中后台解决方案</h1>
+          <h1 class="login-brand__title">{{ appConfig.title }}</h1>
+          <p class="login-brand__desc">基于 Vue 3 / Spring Boot 的前后端分离管理平台</p>
           <div class="login-brand__features">
-            <div class="login-brand__feature">
-              <span class="login-brand__feature-mark">
-                <span class="login-brand__feature-icon i-svg:security" />
-              </span>
-              <span class="login-brand__feature-text">安全可靠</span>
-            </div>
-            <div class="login-brand__feature">
-              <span class="login-brand__feature-mark">
-                <el-icon class="login-brand__feature-icon"><Clock /></el-icon>
-              </span>
-              <span class="login-brand__feature-text">高效稳定</span>
-            </div>
-            <div class="login-brand__feature">
-              <span class="login-brand__feature-mark">
-                <span class="login-brand__feature-icon i-svg:flexible" />
-              </span>
-              <span class="login-brand__feature-text">灵活扩展</span>
-            </div>
+            <span class="login-brand__feature">
+              <span class="login-brand__feature-text">Vue 3</span>
+            </span>
+            <span class="login-brand__feature">
+              <span class="login-brand__feature-text">Spring Boot 4</span>
+            </span>
+            <span class="login-brand__feature">
+              <span class="login-brand__feature-text">Element Plus</span>
+            </span>
+            <span class="login-brand__feature">
+              <span class="login-brand__feature-text">MySQL</span>
+            </span>
           </div>
         </div>
       </div>
@@ -161,7 +152,7 @@
 <script setup lang="ts">
 defineOptions({ name: "LoginPage", inheritAttrs: false });
 
-import { Clock, Lock, Loading, Refresh, User } from "@element-plus/icons-vue";
+import { Lock, Loading, Refresh, User } from "@element-plus/icons-vue";
 import type { FormInstance } from "element-plus";
 import AuthAPI from "@/api/auth";
 import type { LoginRequest } from "@/api/auth";
@@ -205,7 +196,7 @@ const loginRules = computed(() => ({
 // 演示账号（与内置用户一致），点击一键填入
 const demoAccounts = [
   { username: "employee", label: "普通员工" },
-  { username: "dept_manager", label: "部门主管" },
+  { username: "org_manager", label: "架构主管" },
   { username: "manager", label: "总经理" },
   { username: "finance", label: "财务" },
   { username: "clerk", label: "行政" },
@@ -395,36 +386,6 @@ $input-h: 44px;
     padding: 40px 0 60px;
   }
 
-  &__tag {
-    gap: 8px;
-    // 去掉 main 包装层后 tag 成为 hero 的 flex 子项，防止被 stretch 拉满宽度
-    align-self: flex-start;
-    height: 32px;
-    padding: 0 15px 0 13px;
-    margin-bottom: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--brand-strong);
-    background: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
-    border-color: color-mix(in srgb, var(--el-color-primary) 16%, transparent);
-
-    :deep(.el-tag__content) {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-    }
-  }
-
-  &__tag-dot {
-    display: inline-block;
-    flex-shrink: 0;
-    width: 7px;
-    height: 7px;
-    background: var(--el-color-primary);
-    border-radius: 50%;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-color-primary) 16%, transparent);
-  }
-
   &__title {
     margin: 0;
     font-size: 36px;
@@ -436,7 +397,7 @@ $input-h: 44px;
 
   &__desc {
     max-width: 560px;
-    margin: 0;
+    margin: 16px 0 0;
     font-size: 18px;
     line-height: 1.6;
     color: #475569;
@@ -475,27 +436,6 @@ $input-h: 44px;
       content: "";
       background: color-mix(in srgb, var(--el-color-primary) 18%, transparent);
     }
-  }
-
-  &__feature-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    color: var(--brand-strong);
-    background: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
-    border: 1px solid color-mix(in srgb, var(--el-color-primary) 16%, transparent);
-    border-radius: 6px;
-  }
-
-  &__feature-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    color: var(--brand-strong);
   }
 
   &__feature-text {
@@ -760,17 +700,6 @@ $input-h: 44px;
     border-color: rgb(255 255 255 / 16%);
   }
 
-  &__tag {
-    color: #fff;
-    background: rgb(255 255 255 / 8%);
-    border-color: rgb(255 255 255 / 16%);
-  }
-
-  &__tag-dot {
-    background: #fff;
-    box-shadow: 0 0 0 3px rgb(255 255 255 / 18%);
-  }
-
   &__title {
     color: #fff;
   }
@@ -785,16 +714,6 @@ $input-h: 44px;
     &:not(:last-child)::after {
       background: rgb(255 255 255 / 18%);
     }
-  }
-
-  &__feature-mark {
-    color: #fff;
-    background: rgb(255 255 255 / 10%);
-    border-color: rgb(255 255 255 / 16%);
-  }
-
-  &__feature-icon {
-    color: #fff;
   }
 }
 

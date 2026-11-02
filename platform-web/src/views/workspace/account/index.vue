@@ -30,7 +30,7 @@
             <el-tag type="primary" effect="light" round>{{ primaryRole }}</el-tag>
           </div>
           <p class="profile-hero__desc">
-            {{ userProfile.username || "-" }} / {{ userProfile.deptName || "未分配部门" }}
+            {{ userProfile.username || "-" }} / {{ userProfile.orgName || "未分配架构" }}
           </p>
           <div class="profile-hero__meta">
             <span class="profile-hero__meta-item">
@@ -508,7 +508,7 @@ const profileCompletion = computed(() => {
     displayAvatar.value,
     userProfile.value.mobile,
     userProfile.value.email,
-    userProfile.value.deptName,
+    userProfile.value.orgName,
     userProfile.value.roleNames,
     userProfile.value.createTime,
   ];
@@ -545,10 +545,10 @@ const profileInfoItems = computed<ProfileInfoItem[]>(() => [
     muted: !userProfile.value.email,
   },
   {
-    label: "部门",
-    value: userProfile.value.deptName || "-",
+    label: "架构",
+    value: userProfile.value.orgName || "-",
     icon: OfficeBuilding,
-    muted: !userProfile.value.deptName,
+    muted: !userProfile.value.orgName,
   },
   {
     label: "创建时间",

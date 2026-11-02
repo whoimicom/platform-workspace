@@ -49,11 +49,11 @@ const RoleAPI = {
     return request<unknown, RoleForm>({ url: `${ROLE_BASE_URL}/${id}/form`, method: "get" });
   },
   /**
-   * 获取角色的部门 ID 集合(自定义数据权限)
+   * 获取角色的架构 ID 集合(自定义数据权限)
    */
-  getRoleDeptIds(roleId: string) {
+  getRoleOrgIds(roleId: string) {
     return request<unknown, string[]>({
-      url: `${ROLE_BASE_URL}/${roleId}/dept-ids`,
+      url: `${ROLE_BASE_URL}/${roleId}/org-ids`,
       method: "get",
     });
   },
