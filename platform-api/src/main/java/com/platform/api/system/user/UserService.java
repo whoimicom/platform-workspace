@@ -23,9 +23,16 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 public class UserService {
+
+    /** 用户名规则：字母开头，仅支持字母、数字、-、_，最长 64 位（与 sys_user.username 长度一致） */
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9_-]{0,63}$");
+
+    /** 手机号规则：11 位大陆手机号 */
+    private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
 
     private static final RowMapper<UserDtos.UserItem> USER_ITEM_MAPPER = (rs, rowNum) -> new UserDtos.UserItem(
             String.valueOf(rs.getLong("id")),
@@ -184,10 +191,8 @@ public class UserService {
     }
 
     public void create(UserDtos.UserForm form, LoginUser loginUser) {
-        if (form.username() == null || form.username().isBlank()) {
-            throw BusinessException.badRequest("用户名不能为空");
-        }
-        String username = form.username().trim();
+        String username = validateUsername(form.username());
+        String mobile = validateMobile(form.mobile(), null);
         if (userRepository.existsByUsername(username)) {
             throw BusinessException.badRequest("用户名已存在");
         }
@@ -200,7 +205,7 @@ public class UserService {
         user.setNickname(form.nickname());
         user.setAvatar(form.avatar());
         user.setGender(form.gender() == null ? 0 : form.gender());
-        user.setMobile(form.mobile());
+        user.setMobile(mobile);
         user.setEmail(form.email());
         user.setStatus(form.status() == null ? 1 : form.status());
         user.setOrgId(orgId);
@@ -210,6 +215,38 @@ public class UserService {
 
         SysUser saved = userRepository.save(user);
         replaceRoles(saved.getId(), form.roleIds());
+    }
+
+    /**
+     * 用户名校验：非空、字母开头，仅支持字母、数字、-、_。返回 trim 后的用户名。
+     */
+    private String validateUsername(String username) {
+        if (username == null || username.isBlank()) {
+            throw BusinessException.badRequest("用户名不能为空");
+        }
+        String trimmed = username.trim();
+        if (!USERNAME_PATTERN.matcher(trimmed).matches()) {
+            throw BusinessException.badRequest("用户名须以字母开头，只能包含字母、数字、-、_，长度不超过64位");
+        }
+        return trimmed;
+    }
+
+    /**
+     * 手机号校验：必输、格式正确、全局唯一（excludeUserId 用于编辑时排除自身）。返回 trim 后的手机号。
+     */
+    private String validateMobile(String mobile, Long excludeUserId) {
+        if (mobile == null || mobile.isBlank()) {
+            throw BusinessException.badRequest("手机号码不能为空");
+        }
+        String trimmed = mobile.trim();
+        if (!MOBILE_PATTERN.matcher(trimmed).matches()) {
+            throw BusinessException.badRequest("手机号码格式不正确");
+        }
+        var existing = userRepository.findByMobile(trimmed);
+        if (existing.isPresent() && !existing.get().getId().equals(excludeUserId)) {
+            throw BusinessException.badRequest("手机号码已存在");
+        }
+        return trimmed;
     }
 
     public void update(Long id, UserDtos.UserForm form, LoginUser loginUser) {
@@ -223,19 +260,21 @@ public class UserService {
         if (form.username() != null && !form.username().isBlank()) {
             String candidate = form.username().trim();
             if (!candidate.equals(username)) {
+                validateUsername(candidate);
                 if (userRepository.existsByUsername(candidate)) {
                     throw BusinessException.badRequest("用户名已存在");
                 }
                 username = candidate;
             }
         }
+        String mobile = validateMobile(form.mobile(), id);
 
         Map<String, Object> params = new HashMap<>();
         params.put("username", username);
         params.put("nickname", form.nickname());
         params.put("avatar", form.avatar());
         params.put("gender", form.gender() == null ? existing.getGender() : form.gender());
-        params.put("mobile", form.mobile());
+        params.put("mobile", mobile);
         params.put("email", form.email());
         params.put("status", form.status() == null ? existing.getStatus() : form.status());
         params.put("orgId", orgId);

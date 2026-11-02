@@ -487,12 +487,22 @@ const resetPasswordDialogWidth = computed(() =>
 );
 
 const rules: FormRules<UserForm> = {
-  username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
+  username: [
+    { required: true, message: "请输入用户名", trigger: "blur" },
+    {
+      pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/,
+      message: "用户名须以字母开头，只能包含字母、数字、-、_，长度不超过64位",
+      trigger: "blur",
+    },
+  ],
   nickname: [{ required: true, message: "请输入用户昵称", trigger: "blur" }],
   orgId: [{ required: true, message: "请选择所属架构", trigger: "change" }],
   roleIds: [{ required: true, message: "请选择用户角色", trigger: "change" }],
   email: [{ type: "email", message: "请输入正确的邮箱地址", trigger: "blur" }],
-  mobile: [{ pattern: /^1[3-9]\d{9}$/, message: "请输入正确的手机号码", trigger: "blur" }],
+  mobile: [
+    { required: true, message: "请输入手机号码", trigger: "blur" },
+    { pattern: /^1[3-9]\d{9}$/, message: "请输入正确的手机号码", trigger: "blur" },
+  ],
 };
 
 const resetPasswordRules: FormRules<ResetPasswordForm> = {

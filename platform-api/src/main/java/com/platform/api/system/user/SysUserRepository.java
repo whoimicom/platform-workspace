@@ -9,4 +9,6 @@ public interface SysUserRepository extends CrudRepository<SysUser, Long> {
     Optional<SysUser> findByUsername(String username);
 
     boolean existsByUsername(String username);
+
+    Optional<SysUser> findByMobile(String mobile);
 }

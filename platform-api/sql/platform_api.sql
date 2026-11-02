@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     update_time DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_sys_user_username (username),
+    UNIQUE KEY uk_sys_user_mobile (mobile),
     KEY idx_sys_user_dept (dept_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '用户表';
 
