@@ -178,6 +178,22 @@ public class OAuthService {
     // ---- 授权页地址（前端跳转扫码 / 授权）----
 
     /**
+     * 前端内嵌二维码所需的公开配置（不含任何 secret）。
+     */
+    public AuthDtos.OauthClientConfig clientConfig() {
+        OAuthProperties.WeChat wechat = oauthProperties.getWechat();
+        OAuthProperties.WeCom wecom = oauthProperties.getWecom();
+        return new AuthDtos.OauthClientConfig(
+                new AuthDtos.OauthClientConfig.ProviderConfig(
+                        wechat.getAppId(), null, wechat.getRedirectUri(),
+                        wechat.isEnabled() && !isBlank(wechat.getRedirectUri())),
+                new AuthDtos.OauthClientConfig.ProviderConfig(
+                        wecom.getCorpId(), wecom.getAgentId(), wecom.getRedirectUri(),
+                        wecom.isEnabled() && !isBlank(wecom.getRedirectUri()))
+        );
+    }
+
+    /**
      * 构建三方授权页 URL。redirect_uri 直接取配置值，必须与微信/企业微信后台登记的域名完全一致。
      */
     public AuthDtos.OauthAuthorizeUrl buildAuthorizeUrl(String provider) {
@@ -310,11 +326,11 @@ public class OAuthService {
             String accessToken = tokenJson.path("access_token").asText();
 
             // 2) code 换 userid/open_userid
-            String userUrl = "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo"
-                    + "?access_token=" + accessToken
-                    + "&code=" + code;
-            JsonNode userJson = jsonMapper.readTree(
-                    restClient.get().uri(userUrl).retrieve().body(String.class));
+            // 扫码登录（wwlogin）的 code 走 auth/getuserinfo；网页授权的 code 走 user/getuserinfo，先试前者再兜底
+            JsonNode userJson = wecomGetUserInfo(accessToken, code, "auth");
+            if (!userJson.path("errcode").asText("0").equals("0")) {
+                userJson = wecomGetUserInfo(accessToken, code, "user");
+            }
             if (!userJson.path("errcode").asText("0").equals("0")) {
                 log.warn("企业微信 getuserinfo 失败: {}", userJson);
                 throw BusinessException.badRequest("授权 code 无效或已过期，请重新授权");
@@ -337,6 +353,16 @@ public class OAuthService {
             log.error("企业微信换取 openId 异常", ex);
             throw BusinessException.badRequest("企业微信授权服务异常，请稍后重试");
         }
+    }
+
+    /**
+     * 企业微信 code 换用户信息。kind=auth 用于扫码登录，kind=user 用于网页授权。
+     */
+    private JsonNode wecomGetUserInfo(String accessToken, String code, String kind) {
+        String url = "https://qyapi.weixin.qq.com/cgi-bin/" + kind + "/getuserinfo"
+                + "?access_token=" + accessToken
+                + "&code=" + code;
+        return jsonMapper.readTree(restClient.get().uri(url).retrieve().body(String.class));
     }
 
     private AuthDtos.OauthIdentity mockIdentity(String provider, String code) {

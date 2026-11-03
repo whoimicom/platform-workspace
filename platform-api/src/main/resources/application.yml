@@ -53,7 +53,7 @@ app:
       # AppSecret                                               WECHAT_OPEN_APP_SECRET
       app-secret: ${WECHAT_OPEN_APP_SECRET:}
       # 授权回调域（前端需要传这个 code 回来）                    WECHAT_OPEN_REDIRECT_URI
-      redirect-uri: ${WECHAT_OPEN_REDIRECT_URI:}
+      redirect-uri: ${WECHAT_OPEN_REDIRECT_URI:https://elb.hobdt.com/platform-web/oauth-callback.html}
     wecom:
       # 企业微信 CorpID                                         WECOM_CORP_ID
       corp-id: ${WECOM_CORP_ID:}

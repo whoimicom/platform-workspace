@@ -55,7 +55,8 @@ public class SecurityConfig {
                                 "/api/auth/refresh-token",
                                 "/api/auth/sms/send", "/api/auth/sms/login",
                                 "/api/auth/oauth/login", "/api/auth/oauth/bind",
-                                "/api/auth/oauth/authorize-url").permitAll()
+                                "/api/auth/oauth/authorize-url",
+                                "/api/auth/oauth/client-config").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(authenticationEntryPoint)

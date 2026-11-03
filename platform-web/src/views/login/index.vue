@@ -38,6 +38,8 @@
         <div class="login-card__inner">
           <transition name="fade-slide" mode="out-in">
             <div v-if="component === 'login'" key="login" class="login-card__form">
+              <!-- 账号密码登录 -->
+              <template v-if="loginMode === 'password'">
               <h2 class="login-card__title">欢迎回来</h2>
               <p class="login-card__desc">请完成身份验证后进入系统</p>
 
@@ -134,12 +136,202 @@
                     <span class="i-svg:user login-card__alt-icon" />
                     企业微信
                   </button>
-                  <button class="login-card__alt-btn" type="button" @click="showSmsLoginDialog">
+                  <button class="login-card__alt-btn" type="button" @click="switchToSmsLogin">
                     <span class="i-svg:user login-card__alt-icon" />
                     验证码
                   </button>
                 </div>
               </div>
+              </template>
+
+              <!-- 手机号验证码登录 -->
+              <template v-else-if="loginMode === 'sms'">
+                <h2 class="login-card__title">验证码登录</h2>
+                <p class="login-card__desc">请输入已注册的手机号，获取验证码后登录</p>
+
+                <el-form ref="smsFormRef" :model="smsLoginDialog" :rules="smsLoginRules" size="large">
+                  <el-form-item prop="mobile">
+                    <el-input
+                      v-model.trim="smsLoginDialog.mobile"
+                      placeholder="手机号"
+                      maxlength="11"
+                      :prefix-icon="PhoneIcon"
+                    />
+                  </el-form-item>
+                  <!-- 短信验证码（与图形验证互斥显示） -->
+                  <el-form-item v-if="!smsCaptcha.visible" prop="smsCode">
+                    <div class="flex w-full gap-12px">
+                      <el-input
+                        v-model.trim="smsLoginDialog.smsCode"
+                        placeholder="验证码"
+                        class="min-w-0 flex-1"
+                        @keyup.enter="handleSmsLoginSubmit"
+                      >
+                        <template #prefix>
+                          <span class="i-svg:security login-card__prefix-icon" />
+                        </template>
+                      </el-input>
+                      <el-button
+                        :loading="smsLoginDialog.sending"
+                        :disabled="smsLoginDialog.cooldown > 0"
+                        @click="sendSmsCodeForLogin"
+                      >
+                        {{ smsLoginDialog.cooldown > 0 ? `${smsLoginDialog.cooldown}s` : "获取验证码" }}
+                      </el-button>
+                    </div>
+                  </el-form-item>
+
+                  <!-- 图形验证：通过后才发送短信，同一时间只显示一种验证码 -->
+                  <div v-else class="login-card__sms-captcha">
+                    <el-input
+                      v-model.trim="smsCaptcha.code"
+                      placeholder="图形验证码"
+                      maxlength="6"
+                      class="min-w-0 flex-1"
+                      @keyup.enter="sendSmsCodeForLogin"
+                    >
+                      <template #prefix>
+                        <span class="i-svg:security login-card__prefix-icon" />
+                      </template>
+                    </el-input>
+                    <div class="login-card__captcha" @click="refreshSmsCaptcha">
+                      <el-icon v-if="smsCaptcha.loading" class="is-loading" :size="16">
+                        <Loading />
+                      </el-icon>
+                      <img v-else-if="smsCaptcha.base64" :src="smsCaptcha.base64" alt="图形验证码" />
+                      <el-icon v-else :size="16"><Refresh /></el-icon>
+                    </div>
+                    <el-button :loading="smsLoginDialog.sending" @click="sendSmsCodeForLogin">
+                      发送
+                    </el-button>
+                  </div>
+                </el-form>
+
+                <p v-if="smsCaptcha.visible" class="login-card__captcha-tip">
+                  请先完成图形验证，通过后将发送短信验证码
+                </p>
+
+                <el-button
+                  :loading="smsLoginDialog.loading"
+                  type="primary"
+                  size="large"
+                  class="login-card__submit"
+                  @click="handleSmsLoginSubmit"
+                >
+                  登录
+                </el-button>
+
+                <div class="login-card__back">
+                  <a @click="backToPassword">返回账号密码登录</a>
+                </div>
+              </template>
+
+              <!-- 三方账号绑定 -->
+              <template v-else-if="loginMode === 'bind'">
+                <h2 class="login-card__title">{{ oauthBindDialog.providerLabel }}账号绑定</h2>
+                <p class="login-card__desc">
+                  检测到该{{ oauthBindDialog.providerLabel }}账号未关联系统用户，请输入已注册的手机号完成绑定
+                </p>
+
+                <el-form ref="oauthBindFormRef" :model="oauthBindDialog" :rules="smsLoginRules" size="large">
+                  <el-form-item prop="mobile">
+                    <el-input
+                      v-model.trim="oauthBindDialog.mobile"
+                      placeholder="手机号"
+                      maxlength="11"
+                      :prefix-icon="PhoneIcon"
+                    />
+                  </el-form-item>
+                  <!-- 短信验证码（与图形验证互斥显示） -->
+                  <el-form-item v-if="!smsCaptcha.visible" prop="smsCode">
+                    <div class="flex w-full gap-12px">
+                      <el-input
+                        v-model.trim="oauthBindDialog.smsCode"
+                        placeholder="验证码"
+                        class="min-w-0 flex-1"
+                        @keyup.enter="handleOauthBindSubmit"
+                      >
+                        <template #prefix>
+                          <span class="i-svg:security login-card__prefix-icon" />
+                        </template>
+                      </el-input>
+                      <el-button
+                        :loading="oauthBindDialog.sending"
+                        :disabled="oauthBindDialog.cooldown > 0"
+                        @click="sendSmsCodeForBind"
+                      >
+                        {{ oauthBindDialog.cooldown > 0 ? `${oauthBindDialog.cooldown}s` : "获取验证码" }}
+                      </el-button>
+                    </div>
+                  </el-form-item>
+
+                  <!-- 图形验证：通过后才发送短信，同一时间只显示一种验证码 -->
+                  <div v-else class="login-card__sms-captcha">
+                    <el-input
+                      v-model.trim="smsCaptcha.code"
+                      placeholder="图形验证码"
+                      maxlength="6"
+                      class="min-w-0 flex-1"
+                      @keyup.enter="sendSmsCodeForBind"
+                    >
+                      <template #prefix>
+                        <span class="i-svg:security login-card__prefix-icon" />
+                      </template>
+                    </el-input>
+                    <div class="login-card__captcha" @click="refreshSmsCaptcha">
+                      <el-icon v-if="smsCaptcha.loading" class="is-loading" :size="16">
+                        <Loading />
+                      </el-icon>
+                      <img v-else-if="smsCaptcha.base64" :src="smsCaptcha.base64" alt="图形验证码" />
+                      <el-icon v-else :size="16"><Refresh /></el-icon>
+                    </div>
+                    <el-button :loading="oauthBindDialog.sending" @click="sendSmsCodeForBind">
+                      发送
+                    </el-button>
+                  </div>
+                </el-form>
+
+                <p v-if="smsCaptcha.visible" class="login-card__captcha-tip">
+                  请先完成图形验证，通过后将发送短信验证码
+                </p>
+
+                <el-button
+                  :loading="oauthBindDialog.loading"
+                  type="primary"
+                  size="large"
+                  class="login-card__submit"
+                  @click="handleOauthBindSubmit"
+                >
+                  绑定并登录
+                </el-button>
+
+                <div class="login-card__back">
+                  <a @click="backToPassword">返回账号密码登录</a>
+                </div>
+              </template>
+
+              <!-- 三方扫码登录（内嵌二维码，不跳转页面） -->
+              <template v-else-if="loginMode === 'qrcode'">
+                <h2 class="login-card__title login-card__qrcode-title">
+                  {{ qrcodeProvider === "WECHAT" ? "微信扫码登录" : "企业微信扫码登录" }}
+                </h2>
+                <p class="login-card__desc login-card__qrcode-desc">
+                  请使用{{ qrcodeProvider === "WECHAT" ? "微信" : "企业微信" }}扫描下方二维码，并在手机上确认登录
+                </p>
+
+                <div class="login-card__qrcode">
+                  <div :id="QRCODE_CONTAINER_ID" class="login-card__qrcode-inner"></div>
+                  <div v-if="qrcodeLoading" class="login-card__qrcode-mask">
+                    <el-icon class="is-loading"><Loading /></el-icon>
+                  </div>
+                </div>
+
+                <p v-if="qrcodeError" class="login-card__qrcode-error">{{ qrcodeError }}</p>
+
+                <div class="login-card__back">
+                  <a @click="backToPassword">返回账号密码登录</a>
+                </div>
+              </template>
             </div>
 
             <ResetPwd
@@ -149,91 +341,6 @@
               @update:model-value="component = $event"
             />
           </transition>
-
-          <!-- 手机验证码直接登录弹窗 -->
-          <el-dialog
-            v-model="smsLoginDialog.visible"
-            title="手机号验证码登录"
-            width="380px"
-            append-to-body
-            :close-on-click-modal="false"
-            @closed="resetSmsLogin"
-          >
-            <el-form ref="smsFormRef" :model="smsLoginDialog" :rules="smsLoginRules" label-width="80px">
-              <el-form-item label="手机号" prop="mobile">
-                <el-input
-                  v-model.trim="smsLoginDialog.mobile"
-                  placeholder="请输入手机号"
-                  maxlength="11"
-                />
-              </el-form-item>
-              <el-form-item label="验证码" prop="smsCode">
-                <div class="flex w-full gap-8px">
-                  <el-input
-                    v-model.trim="smsLoginDialog.smsCode"
-                    placeholder="请输入验证码"
-                    class="flex-1"
-                  />
-                  <el-button
-                    :loading="smsLoginDialog.sending"
-                    :disabled="smsLoginDialog.cooldown > 0"
-                    @click="sendSmsCodeForLogin"
-                  >
-                    {{ smsLoginDialog.cooldown > 0 ? `${smsLoginDialog.cooldown}s` : "获取验证码" }}
-                  </el-button>
-                </div>
-              </el-form-item>
-            </el-form>
-            <template #footer>
-              <el-button type="primary" :loading="smsLoginDialog.loading" @click="handleSmsLoginSubmit">
-                登录
-              </el-button>
-            </template>
-          </el-dialog>
-
-          <!-- 三方绑定弹窗（需要手机号验证码关联已有系统用户） -->
-          <el-dialog
-            v-model="oauthBindDialog.visible"
-            :title="oauthBindDialog.providerLabel + ' 绑定'"
-            width="380px"
-            append-to-body
-            :close-on-click-modal="false"
-            @closed="resetOauthBind"
-          >
-            <div class="mb-12px text-13px text-gray-500">
-              检测到 {{ oauthBindDialog.providerLabel }} 账号未关联系统用户，请输入已注册的手机号进行绑定。
-            </div>
-            <el-form ref="oauthBindFormRef" :model="oauthBindDialog" :rules="smsLoginRules" label-width="80px">
-              <el-form-item label="手机号" prop="mobile">
-                <el-input
-                  v-model.trim="oauthBindDialog.mobile"
-                  placeholder="请输入手机号"
-                  maxlength="11"
-                />
-              </el-form-item>
-              <el-form-item label="验证码" prop="smsCode">
-                <div class="flex w-full gap-8px">
-                  <el-input
-                    v-model.trim="oauthBindDialog.smsCode"
-                    placeholder="请输入验证码"
-                    class="flex-1"
-                  />
-                  <el-button
-                    :loading="oauthBindDialog.sending"
-                    :disabled="oauthBindDialog.cooldown > 0"
-                    @click="sendSmsCodeForBind"
-                  >
-                    {{ oauthBindDialog.cooldown > 0 ? `${oauthBindDialog.cooldown}s` : "获取验证码" }}
-                  </el-button>
-                </div>
-              </el-form-item>
-            </el-form>
-            <template #footer>
-              <el-button type="primary" :loading="oauthBindDialog.loading" @click="handleOauthBindSubmit">
-                绑定并登录
-              </el-button>
-            </template>
-          </el-dialog>
         </div>
 
         <div class="login-footer">Copyright © 2026 whoimi.com</div>
@@ -246,7 +353,7 @@
 defineOptions({ name: "LoginPage", inheritAttrs: false });
 
 import { ElMessage, type FormInstance } from "element-plus";
-import { Lock, Loading, Refresh, User } from "@element-plus/icons-vue";
+import { Lock, Loading, Phone, Refresh, User } from "@element-plus/icons-vue";
 import AuthAPI from "@/api/auth";
 import type { LoginRequest, OauthProvider } from "@/api/auth";
 import router from "@/router";
@@ -268,6 +375,10 @@ const codeLoading = ref(false);
 
 const UserIcon = markRaw(User);
 const LockIcon = markRaw(Lock);
+const PhoneIcon = markRaw(Phone);
+
+/** 登录卡片内的模式：账号密码 / 手机验证码 / 三方绑定 / 三方扫码 */
+const loginMode = ref<"password" | "sms" | "bind" | "qrcode">("password");
 
 // ---- 账号密码登录表单 ----
 
@@ -288,11 +399,10 @@ const loginRules = computed(() => ({
   captchaCode: [{ required: true, trigger: "blur", message: "请输入验证码" }],
 }));
 
-// ---- 短信登录弹窗 ----
+// ---- 短信登录（卡片内模式）----
 
 const smsFormRef = ref<FormInstance>();
 const smsLoginDialog = reactive({
-  visible: false,
   mobile: "",
   smsCode: "",
   sending: false,
@@ -301,11 +411,10 @@ const smsLoginDialog = reactive({
   cooldownTimer: null as number | null,
 });
 
-// ---- 三方绑定弹窗 ----
+// ---- 三方绑定（卡片内模式）----
 
 const oauthBindFormRef = ref<FormInstance>();
 const oauthBindDialog = reactive({
-  visible: false,
   provider: "" as OauthProvider | "",
   providerLabel: "",
   bindToken: "",
@@ -404,28 +513,173 @@ function showForm(type: "resetPwd") {
   component.value = type;
 }
 
-// ---- 三方登录（微信 / 企业微信）----
+// ---- 三方登录（微信 / 企业微信，登录卡片内嵌二维码）----
 
 const OAUTH_PROVIDER_KEY = "oauth_provider";
 const OAUTH_STATE_KEY = "oauth_state";
+const QRCODE_CONTAINER_ID = "oauth-qrcode-container";
+
+const qrcodeProvider = ref<OauthProvider | "">("");
+const qrcodeLoading = ref(false);
+const qrcodeError = ref("");
+
+/** 清空二维码容器，避免切换 provider 时残留上一个 iframe */
+function clearQrcode() {
+  const container = document.getElementById(QRCODE_CONTAINER_ID);
+  if (container) container.innerHTML = "";
+}
+
+function resetQrcode() {
+  clearQrcode();
+  qrcodeProvider.value = "";
+  qrcodeLoading.value = false;
+  qrcodeError.value = "";
+}
+
+function generateState() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+/** 官方扫码 SDK 的构造函数签名 */
+type QrSdkCtor = new (options: Record<string, unknown>) => unknown;
+
+/** 动态加载官方 SDK（幂等） */
+function loadSdk(src: string, sdkKey: string): Promise<void> {
+  const flagKey = `__${sdkKey}_loaded__`;
+  const flags = window as unknown as Record<string, boolean>;
+  if (flags[flagKey]) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => {
+      flags[flagKey] = true;
+      resolve();
+    };
+    script.onerror = () => reject(new Error("二维码组件加载失败，请检查网络或域名配置"));
+    document.head.appendChild(script);
+  });
+}
 
 /**
- * 跳转到三方授权页（微信扫码 / 企业微信授权）。
- * 扫码完成后三方会重定向回 redirect-uri（前端登录页），URL 携带 code + state。
+ * 点击微信 / 企业微信：在登录卡片内渲染官方二维码，不跳转页面。
+ * 扫码确认后，官方 iframe 会跳到中转页，中转页通过 postMessage 把 code 传回本页。
  */
 async function handleOauthLogin(provider: OauthProvider) {
+  qrcodeError.value = "";
+  qrcodeLoading.value = true;
+  qrcodeProvider.value = provider;
+  loginMode.value = "qrcode";
+  clearQrcode();
+
+  const state = generateState();
+  sessionStorage.setItem(OAUTH_PROVIDER_KEY, provider);
+  sessionStorage.setItem(OAUTH_STATE_KEY, state);
+
   try {
-    const { url, state } = await AuthAPI.getOauthAuthorizeUrl(provider);
-    sessionStorage.setItem(OAUTH_PROVIDER_KEY, provider);
-    sessionStorage.setItem(OAUTH_STATE_KEY, state);
-    window.location.href = url;
-  } catch {
-    // 后端未配置时已返回明确提示
+    const config = await AuthAPI.getOauthClientConfig();
+    const providerConfig = provider === "WECHAT" ? config.wechat : config.wecom;
+    if (!providerConfig.enabled || !providerConfig.redirectUri) {
+      throw new Error(
+        provider === "WECHAT"
+          ? "微信登录未配置：请设置 WECHAT_OPEN_APPID / WECHAT_OPEN_APP_SECRET / WECHAT_OPEN_REDIRECT_URI"
+          : "企业微信登录未配置：请设置 WECOM_CORP_ID / WECOM_APP_SECRET / WECOM_REDIRECT_URI"
+      );
+    }
+
+    // 等待 qrcode 模式的容器渲染完成
+    await nextTick();
+
+    if (provider === "WECHAT") {
+      await loadSdk("https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js", "wxLogin");
+      const WxLoginCtor = (window as unknown as Record<string, QrSdkCtor | undefined>).WxLogin;
+      if (!WxLoginCtor) throw new Error("微信扫码组件加载失败");
+      new WxLoginCtor({
+        self_redirect: true,
+        id: QRCODE_CONTAINER_ID,
+        appid: providerConfig.appId,
+        scope: "snsapi_login",
+        redirect_uri: encodeURIComponent(providerConfig.redirectUri),
+        state,
+        style: "black",
+        href: "",
+      });
+    } else {
+      await loadSdk(
+        "https://wwcdn.weixin.qq.com/node/wwl/20240119170700/wwLogin-1.3.0.js",
+        "wwLogin"
+      );
+      const WwLoginCtor = (window as unknown as Record<string, QrSdkCtor | undefined>).WwLogin;
+      if (!WwLoginCtor) throw new Error("企业微信扫码组件加载失败");
+      new WwLoginCtor({
+        id: QRCODE_CONTAINER_ID,
+        appid: providerConfig.appId,
+        agentid: providerConfig.agentId,
+        redirect_uri: encodeURIComponent(providerConfig.redirectUri),
+        state,
+        lang: "zh",
+        href: "",
+      });
+    }
+  } catch (error) {
+    qrcodeError.value = error instanceof Error ? error.message : "二维码加载失败";
+  } finally {
+    qrcodeLoading.value = false;
   }
 }
 
 /**
- * 处理三方授权回调：校验 state 后用 code 换取登录态。
+ * 统一处理授权 code：已绑定直接登录，未绑定切到绑定模式。
+ */
+async function handleOauthCode(provider: OauthProvider, code: string) {
+  try {
+    const result = await AuthAPI.oauthLogin({ provider, code });
+    if (result.loggedIn && result.accessToken) {
+      await finalizeLogin({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken ?? "",
+        tokenType: "Bearer",
+        expiresIn: 7200,
+      });
+      return;
+    }
+    if (result.needBind && result.bindToken) {
+      // 在登录卡片内切换到绑定模式
+      oauthBindDialog.provider = provider;
+      oauthBindDialog.providerLabel = providerLabelMap[provider];
+      oauthBindDialog.bindToken = result.bindToken;
+      loginMode.value = "bind";
+      return;
+    }
+    ElMessage.error("登录失败：未识别的返回结果");
+  } catch {
+    // 后端已通过 businessException 返回错误消息
+  }
+}
+
+/**
+ * 内嵌二维码回调：中转页在 iframe 内通过 postMessage 把 code 传回本页。
+ */
+function handleOauthMessage(event: MessageEvent) {
+  // 只接受本域中转页发来的消息
+  if (event.origin !== window.location.origin) return;
+  const data = event.data as { type?: string; code?: string; state?: string } | null;
+  if (!data || data.type !== "oauth-callback" || !data.code) return;
+
+  const provider = sessionStorage.getItem(OAUTH_PROVIDER_KEY) as OauthProvider | null;
+  const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+  sessionStorage.removeItem(OAUTH_PROVIDER_KEY);
+  sessionStorage.removeItem(OAUTH_STATE_KEY);
+
+  if (!provider || !expectedState || data.state !== expectedState) {
+    qrcodeError.value = "登录校验失败，请刷新二维码后重试";
+    return;
+  }
+  void handleOauthCode(provider, data.code);
+}
+
+/**
+ * 整页授权回调兜底：地址栏携带 code + state 时，校验后换取登录态。
  */
 async function handleOauthCallback() {
   const code = route.query.code as string | undefined;
@@ -444,30 +698,7 @@ async function handleOauthCallback() {
     ElMessage.error("登录校验失败，请重新登录");
     return;
   }
-
-  try {
-    const result = await AuthAPI.oauthLogin({ provider, code });
-    if (result.loggedIn && result.accessToken) {
-      await finalizeLogin({
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken ?? "",
-        tokenType: "Bearer",
-        expiresIn: 7200,
-      });
-      return;
-    }
-    if (result.needBind && result.bindToken) {
-      // 打开绑定弹窗
-      oauthBindDialog.provider = provider;
-      oauthBindDialog.providerLabel = providerLabelMap[provider];
-      oauthBindDialog.bindToken = result.bindToken;
-      oauthBindDialog.visible = true;
-      return;
-    }
-    ElMessage.error("登录失败：未识别的返回结果");
-  } catch {
-    // 后端已通过 businessException 返回错误消息
-  }
+  await handleOauthCode(provider, code);
 }
 
 async function handleOauthBindSubmit() {
@@ -502,6 +733,7 @@ function resetOauthBind() {
     oauthBindDialog.cooldownTimer = null;
   }
   oauthBindDialog.cooldown = 0;
+  resetSmsCaptcha();
 }
 
 async function sendSmsCodeForBind() {
@@ -509,20 +741,79 @@ async function sendSmsCodeForBind() {
     ElMessage.warning("请先输入正确的手机号");
     return;
   }
+  // 第一次点击：先展开图形验证
+  if (!smsCaptcha.visible) {
+    await refreshSmsCaptcha();
+    return;
+  }
+  if (!smsCaptcha.code.trim()) {
+    ElMessage.warning("请先输入图形验证码");
+    return;
+  }
   oauthBindDialog.sending = true;
   try {
-    await AuthAPI.sendSmsCode(oauthBindDialog.mobile);
+    await AuthAPI.sendSmsCode({
+      mobile: oauthBindDialog.mobile,
+      captchaToken: smsCaptcha.token,
+      captchaCode: smsCaptcha.code.trim(),
+    });
     ElMessage.success("验证码已发送");
+    resetSmsCaptcha();
     startCooldown(oauthBindDialog, 60);
+  } catch {
+    // 图形验证码为一次性消费，失败后自动刷新
+    await refreshSmsCaptcha();
   } finally {
     oauthBindDialog.sending = false;
   }
 }
 
+// ---- 发送短信前的图形验证 ----
+
+const smsCaptcha = reactive({
+  visible: false,
+  token: "",
+  base64: "",
+  code: "",
+  loading: false,
+});
+
+/** 拉取（或刷新）图形验证码，并展开图形验证输入行 */
+async function refreshSmsCaptcha() {
+  smsCaptcha.loading = true;
+  try {
+    const info = await AuthAPI.getCaptcha();
+    smsCaptcha.token = info.captchaToken;
+    smsCaptcha.base64 = info.captchaBase64;
+    smsCaptcha.code = "";
+    smsCaptcha.visible = true;
+  } catch {
+    ElMessage.error("图形验证码加载失败，请重试");
+  } finally {
+    smsCaptcha.loading = false;
+  }
+}
+
+function resetSmsCaptcha() {
+  smsCaptcha.visible = false;
+  smsCaptcha.token = "";
+  smsCaptcha.base64 = "";
+  smsCaptcha.code = "";
+}
+
 // ---- 手机验证码直接登录 ----
 
-function showSmsLoginDialog() {
-  smsLoginDialog.visible = true;
+function switchToSmsLogin() {
+  resetSmsLogin();
+  loginMode.value = "sms";
+}
+
+/** 返回账号密码登录 */
+function backToPassword() {
+  if (loginMode.value === "sms") resetSmsLogin();
+  if (loginMode.value === "bind") resetOauthBind();
+  if (loginMode.value === "qrcode") resetQrcode();
+  loginMode.value = "password";
 }
 
 async function sendSmsCodeForLogin() {
@@ -530,11 +821,28 @@ async function sendSmsCodeForLogin() {
     ElMessage.warning("请先输入正确的手机号");
     return;
   }
+  // 第一次点击：先展开图形验证
+  if (!smsCaptcha.visible) {
+    await refreshSmsCaptcha();
+    return;
+  }
+  if (!smsCaptcha.code.trim()) {
+    ElMessage.warning("请先输入图形验证码");
+    return;
+  }
   smsLoginDialog.sending = true;
   try {
-    await AuthAPI.sendSmsCode(smsLoginDialog.mobile);
+    await AuthAPI.sendSmsCode({
+      mobile: smsLoginDialog.mobile,
+      captchaToken: smsCaptcha.token,
+      captchaCode: smsCaptcha.code.trim(),
+    });
     ElMessage.success("验证码已发送");
+    resetSmsCaptcha();
     startCooldown(smsLoginDialog, 60);
+  } catch {
+    // 图形验证码为一次性消费，失败后自动刷新
+    await refreshSmsCaptcha();
   } finally {
     smsLoginDialog.sending = false;
   }
@@ -568,6 +876,7 @@ function resetSmsLogin() {
     smsLoginDialog.cooldownTimer = null;
   }
   smsLoginDialog.cooldown = 0;
+  resetSmsCaptcha();
 }
 
 // ---- 通用：拿到后端返回结果后写 token + 拉用户信息 + 跳转 ----
@@ -589,8 +898,14 @@ async function finalizeLogin(result: {
 
 onMounted(() => {
   getCaptcha();
-  // 三方授权回调（URL 携带 code + state）
+  // 三方授权回调（URL 携带 code + state，整页模式兜底）
   handleOauthCallback();
+  // 内嵌二维码扫码完成后，由中转页 postMessage 通知本页
+  window.addEventListener("message", handleOauthMessage);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("message", handleOauthMessage);
 });
 </script>
 
@@ -885,6 +1200,136 @@ $input-h: 44px;
     }
   }
 
+  /* 卡片内切换模式（验证码登录 / 三方绑定）的返回入口 */
+  &__back {
+    margin-top: 18px;
+    font-size: 13px;
+    text-align: center;
+
+    a {
+      color: var(--el-color-primary);
+      cursor: pointer;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  /* 内嵌三方扫码二维码 */
+  &__qrcode-title {
+    text-align: center;
+  }
+
+  &__qrcode-desc {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  &__qrcode {
+    position: relative;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 312px;
+    margin: 4px 0 0;
+  }
+
+  /*
+   * 官方 SDK 固定输出 300×400 的 iframe。
+   * 用 zoom 而不是 transform 缩放：zoom 会同步改变布局尺寸，
+   * 避免 transform 只改绘制、布局仍按 400 高而导致的遮挡/裁剪问题。
+   */
+  &__qrcode-inner {
+    position: relative;
+    flex: none;
+    width: 234px;
+    height: 312px;
+    overflow: hidden;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+
+    :deep(iframe) {
+      display: block;
+      width: 300px;
+      height: 400px;
+      border: none;
+      border-radius: 12px;
+      zoom: 0.78;
+    }
+  }
+
+  &__qrcode-mask {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: var(--el-color-primary);
+    background: color-mix(in srgb, var(--el-bg-color) 88%, transparent);
+  }
+
+  &__qrcode-error {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: var(--el-color-danger);
+    text-align: center;
+  }
+
+  /* 视口高度不足时进一步缩小二维码，避免整页出现滚动条 */
+  @media (max-height: 820px) {
+    &__qrcode {
+      min-height: 280px;
+    }
+
+    &__qrcode-inner {
+      width: 210px;
+      height: 280px;
+
+      :deep(iframe) {
+        zoom: 0.7;
+      }
+    }
+  }
+
+  @media (max-height: 700px) {
+    &__qrcode {
+      min-height: 240px;
+    }
+
+    &__qrcode-inner {
+      width: 180px;
+      height: 240px;
+
+      :deep(iframe) {
+        zoom: 0.6;
+      }
+    }
+  }
+
+  /* 短信发送前的图形验证行（与短信验证码输入互斥显示） */
+  &__sms-captcha {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 18px;
+
+    :deep(.el-button) {
+      flex-shrink: 0;
+    }
+  }
+
+  &__captcha-tip {
+    margin: -4px 0 14px;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    text-align: center;
+  }
+
   &__demo {
     margin-top: 20px;
 
@@ -1113,12 +1558,10 @@ $input-h: 44px;
 @keyframes login-pane-in {
   from {
     opacity: 0;
-    filter: blur(4px);
   }
 
   to {
     opacity: 1;
-    filter: blur(0);
   }
 }
 

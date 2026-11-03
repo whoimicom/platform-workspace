@@ -11,22 +11,33 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
       color: #273248; background: #f5f7fb;
     }
-    .tip { font-size: 14px; color: #6b7280; }
+    .tip { font-size: 13px; color: #98a2b3; }
   </style>
 </head>
 <body>
-<div class="tip">正在跳转，请稍候...</div>
+<div class="tip">登录完成，请稍候...</div>
 <script>
   (function () {
     var params = new URLSearchParams(window.location.search);
     var code = params.get('code');
     var state = params.get('state');
-    // 前端使用 hash 路由：/platform-web/#/login?code=xxx&state=xxx
+    if (!code) return;
+
+    // 内嵌二维码模式：扫码后官方 iframe 会跳到本页，这里把 code 回传给父页面（同域）
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        { type: 'oauth-callback', code: code, state: state },
+        window.location.origin
+      );
+      return;
+    }
+
+    // 整页模式兜底：前端使用 hash 路由，转发到 /#/login?code=xxx&state=xxx
     var base = window.location.pathname.replace(/oauth-callback\.html$/, '') + '#/login';
     var query = [];
-    if (code) query.push('code=' + encodeURIComponent(code));
+    query.push('code=' + encodeURIComponent(code));
     if (state) query.push('state=' + encodeURIComponent(state));
-    window.location.replace(base + (query.length ? '?' + query.join('&') : ''));
+    window.location.replace(base + '?' + query.join('&'));
   })();
 </script>
 </body>

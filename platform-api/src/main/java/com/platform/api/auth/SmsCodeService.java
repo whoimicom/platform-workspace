@@ -49,7 +49,11 @@ public class SmsCodeService {
 
     private final SecureRandom random = new SecureRandom();
 
-    public SmsCodeService() {
+    /** 图形验证码服务：发送短信前必须通过图形验证，防止脚本直接刷短信 */
+    private final CaptchaService captchaService;
+
+    public SmsCodeService(CaptchaService captchaService) {
+        this.captchaService = captchaService;
         this.codeCache = Caffeine.newBuilder()
                 .maximumSize(10_000)
                 .expireAfter(new FixedTtlExpiry<>(CODE_TTL_SECONDS))
@@ -69,10 +73,15 @@ public class SmsCodeService {
     /**
      * 发送验证码（内部完成校验 + 生成 + mock 发送）。
      *
-     * @param mobile  手机号
-     * @param request 当前 HttpServletRequest（用于 IP 防刷）
+     * @param mobile       手机号
+     * @param request      当前 HttpServletRequest（用于 IP 防刷与图形验证指纹比对）
+     * @param captchaToken 图形验证码 token
+     * @param captchaCode  图形验证码明文
      */
-    public void send(String mobile, HttpServletRequest request) {
+    public void send(String mobile, HttpServletRequest request, String captchaToken, String captchaCode) {
+        // 0) 图形验证码必须先通过（配置关闭时 validate 直接放行）
+        captchaService.validate(captchaToken, captchaCode, request);
+
         if (mobile == null || !mobile.matches("^1[3-9]\\d{9}$")) {
             throw BusinessException.badRequest("手机号格式不正确");
         }

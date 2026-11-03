@@ -55,8 +55,11 @@ public class AuthController {
     // ---- 短信验证码 ----
 
     @PostMapping("/sms/send")
-    public ResultInfo<Void> sendSmsCode(@RequestParam String mobile, HttpServletRequest request) {
-        smsCodeService.send(mobile, request);
+    public ResultInfo<Void> sendSmsCode(@RequestParam String mobile,
+                                        @RequestParam(required = false) String captchaToken,
+                                        @RequestParam(required = false) String captchaCode,
+                                        HttpServletRequest request) {
+        smsCodeService.send(mobile, request, captchaToken, captchaCode);
         return ResultInfo.ok();
     }
 
@@ -66,6 +69,12 @@ public class AuthController {
     }
 
     // ---- 三方登录 ----
+
+    /** 前端内嵌二维码所需配置（appId / corpId / agentId，不含 secret） */
+    @GetMapping("/oauth/client-config")
+    public ResultInfo<AuthDtos.OauthClientConfig> clientConfig() {
+        return ResultInfo.ok(oauthService.clientConfig());
+    }
 
     /** 获取三方授权页地址（前端跳转扫码/授权，回调携带 code + state） */
     @GetMapping("/oauth/authorize-url")

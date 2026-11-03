@@ -59,6 +59,23 @@ public final class AuthDtos {
     public record OauthAuthorizeUrl(String url, String state) {
     }
 
+    /**
+     * 前端内嵌二维码所需的公开配置（不含任何 secret）。
+     */
+    public record OauthClientConfig(
+            ProviderConfig wechat,
+            ProviderConfig wecom
+    ) {
+        /**
+         * @param appId       微信为开放平台 AppID；企业微信为 CorpID
+         * @param agentId     仅企业微信使用
+         * @param redirectUri 授权回调地址（前端内嵌二维码时传给 SDK）
+         * @param enabled     是否已完成配置，可用于前端判断是否展示入口
+         */
+        public record ProviderConfig(String appId, String agentId, String redirectUri, boolean enabled) {
+        }
+    }
+
     /** 三方绑定登录请求 */
     public record OauthBindRequest(String bindToken, String mobile, String smsCode) {
     }

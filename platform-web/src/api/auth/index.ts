@@ -5,10 +5,12 @@ import type {
   LoginResult,
   OauthAuthorizeUrl,
   OauthBindRequest,
+  OauthClientConfig,
   OauthLoginQuery,
   OauthLoginResult,
   OauthProvider,
   SmsLoginRequest,
+  SmsSendRequest,
 } from "./types";
 
 const AUTH_BASE_URL = "/api/auth";
@@ -73,11 +75,11 @@ const AuthAPI = {
   /**
    * 发送短信验证码
    */
-  sendSmsCode(mobile: string) {
+  sendSmsCode(data: SmsSendRequest) {
     return request<unknown, void>({
       url: `${AUTH_BASE_URL}/sms/send`,
       method: "post",
-      params: { mobile },
+      params: data,
       anonymous: true,
     });
   },
@@ -95,6 +97,17 @@ const AuthAPI = {
   },
 
   // ---- 三方登录 ----
+
+  /**
+   * 获取前端内嵌二维码所需的公开配置（appId / corpId / agentId）
+   */
+  getOauthClientConfig() {
+    return request<unknown, OauthClientConfig>({
+      url: `${AUTH_BASE_URL}/oauth/client-config`,
+      method: "get",
+      anonymous: true,
+    });
+  },
 
   /**
    * 获取三方授权页地址（前端跳转扫码/授权，回调携带 code + state）

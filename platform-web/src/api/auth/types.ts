@@ -42,6 +42,9 @@ export interface CaptchaInfo {
 
 export interface SmsSendRequest {
   mobile: string;
+  /** 图形验证码 token（发送短信前必须先通过图形验证） */
+  captchaToken?: string;
+  captchaCode?: string;
 }
 
 export interface SmsLoginRequest {
@@ -67,6 +70,23 @@ export interface OauthAuthorizeUrl {
   url: string;
   /** 防 CSRF 的 state，回调时需原样带回并校验 */
   state: string;
+}
+
+/** 前端内嵌二维码所需的公开配置（不含 secret） */
+export interface OauthProviderConfig {
+  /** 微信为开放平台 AppID；企业微信为 CorpID */
+  appId: string;
+  /** 仅企业微信使用 */
+  agentId?: string;
+  /** 授权回调地址（内嵌二维码时传给 SDK） */
+  redirectUri: string;
+  /** 是否已完成配置 */
+  enabled: boolean;
+}
+
+export interface OauthClientConfig {
+  wechat: OauthProviderConfig;
+  wecom: OauthProviderConfig;
 }
 
 /**
