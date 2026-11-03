@@ -52,7 +52,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(registry -> registry
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/captcha",
-                                "/api/auth/refresh-token").permitAll()
+                                "/api/auth/refresh-token",
+                                "/api/auth/sms/send", "/api/auth/sms/login",
+                                "/api/auth/oauth/login", "/api/auth/oauth/bind",
+                                "/api/auth/oauth/authorize-url").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(authenticationEntryPoint)

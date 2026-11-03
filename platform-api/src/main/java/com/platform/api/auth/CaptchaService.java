@@ -1,7 +1,8 @@
 package com.platform.api.auth;
 
 import com.platform.api.common.BusinessException;
-import com.platform.api.config.AppProperties;
+import com.platform.api.config.CaptchaProperties;
+import com.platform.api.config.JwtProperties;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
@@ -34,27 +35,28 @@ public class CaptchaService {
     private static final int WIDTH = 120;
     private static final int HEIGHT = 44;
 
-    private final AppProperties properties;
+    private final CaptchaProperties captchaProperties;
+    private final JwtProperties jwtProperties;
     private final SecureRandom random = new SecureRandom();
 
     private CaptchaSigner signer;
     private LocalReplayStore replayStore;
     private Duration expireDuration;
 
-    public CaptchaService(AppProperties properties) {
-        this.properties = properties;
+    public CaptchaService(CaptchaProperties captchaProperties, JwtProperties jwtProperties) {
+        this.captchaProperties = captchaProperties;
+        this.jwtProperties = jwtProperties;
     }
 
     @PostConstruct
     void init() {
-        AppProperties.Captcha captcha = properties.getCaptcha();
-        String secret = captcha.getSecret();
+        String secret = captchaProperties.getSecret();
         if (secret == null || secret.isBlank()) {
-            secret = properties.getJwt().getSecret();
+            secret = jwtProperties.getSecret();
         }
         this.signer = new CaptchaSigner(secret);
-        this.replayStore = new LocalReplayStore(captcha.getReplayCacheMaxSize());
-        this.expireDuration = Duration.ofSeconds(captcha.getExpireSeconds());
+        this.replayStore = new LocalReplayStore(captchaProperties.getReplayCacheMaxSize());
+        this.expireDuration = Duration.ofSeconds(captchaProperties.getExpireSeconds());
     }
 
     /**
@@ -82,7 +84,7 @@ public class CaptchaService {
      * @param request      当前请求（用于比对指纹）
      */
     public void validate(String captchaToken, String captchaCode, HttpServletRequest request) {
-        if (!properties.isCaptchaEnabled()) {
+        if (!captchaProperties.isEnabled()) {
             return;
         }
         if (captchaToken == null || captchaCode == null) {

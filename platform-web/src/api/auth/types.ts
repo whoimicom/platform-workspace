@@ -37,3 +37,55 @@ export interface CaptchaInfo {
   /** 验证码图片 Base64 */
   captchaBase64: string;
 }
+
+// ---- 短信验证码 ----
+
+export interface SmsSendRequest {
+  mobile: string;
+}
+
+export interface SmsLoginRequest {
+  mobile: string;
+  smsCode: string;
+}
+
+// ---- 三方登录 ----
+
+export type OauthProvider = "WECHAT" | "WECOM";
+
+export interface OauthLoginQuery {
+  provider: OauthProvider;
+  /** 应用/企业 appId，可空 */
+  appId?: string;
+  /** 前端拿到的授权 code */
+  code: string;
+}
+
+/** 三方授权页地址 */
+export interface OauthAuthorizeUrl {
+  /** 需打开的授权页 URL（微信扫码 / 企业微信授权） */
+  url: string;
+  /** 防 CSRF 的 state，回调时需原样带回并校验 */
+  state: string;
+}
+
+/**
+ * 三方登录结果（已绑定 or 需要绑定）
+ */
+export interface OauthLoginResult {
+  /** 已绑定直接登录 */
+  loggedIn: boolean;
+  /** 需要手机号+验证码绑定 */
+  needBind: boolean;
+  /** 已绑定时返回 */
+  accessToken?: string;
+  refreshToken?: string;
+  /** needBind=true 时返回，传给 /oauth/bind */
+  bindToken?: string;
+}
+
+export interface OauthBindRequest {
+  bindToken: string;
+  mobile: string;
+  smsCode: string;
+}

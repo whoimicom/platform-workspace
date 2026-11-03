@@ -25,26 +25,47 @@ spring:
       database: 13
       port: 6379
 app:
-  # 是否校验图形验证码（前端登录页默认展示验证码）
-  captcha-enabled: true
+  # 新增用户及 SQL 初始账号 NEED_INIT 的默认密码
+  default-password: 123456
+  # 图形验证码（签名 token + 指纹 + 本地防重放）
   captcha:
+    # 是否启用验证码校验（全局开关，可通过环境变量覆盖）
+    enabled: true
     # 留空则复用 app.jwt.secret；生产环境建议单独指定，至少 32 字节
     secret:
     # 验证码 token 有效期（秒）
     expire-seconds: 300
     # 本地防重放黑名单容量上限
     replay-cache-max-size: 100000
-  # 新增用户及 SQL 初始账号 NEED_INIT 的默认密码
-  default-password: 123456
+  # JWT 令牌
   jwt:
-    # 至少 32 字节，生产环境务必修改
-    secret: platform-api-default-secret-change-me-0123456789abcdef
+    # HMAC 密钥，至少 32 字节；生产环境务必通过环境变量覆盖
+    secret: ${JWT_SECRET:platform-api-default-secret-change-me-0123456789abcdef}
     # 访问令牌有效期（秒）
     access-expire-seconds: 1800
     # 刷新令牌有效期（秒）
     refresh-expire-seconds: 604800
+  # 三方登录（均支持环境变量覆盖；未配置 appId/appSecret 时 exchangeOpenId 自动退化为 mock）
+  oauth:
+    wechat:
+      # 微信开放平台 - 网站应用 AppID  WECHAT_OPEN_APPID
+      app-id: ${WECHAT_OPEN_APPID:}
+      # AppSecret                                               WECHAT_OPEN_APP_SECRET
+      app-secret: ${WECHAT_OPEN_APP_SECRET:}
+      # 授权回调域（前端需要传这个 code 回来）                    WECHAT_OPEN_REDIRECT_URI
+      redirect-uri: ${WECHAT_OPEN_REDIRECT_URI:}
+    wecom:
+      # 企业微信 CorpID                                         WECOM_CORP_ID
+      corp-id: ${WECOM_CORP_ID:}
+      # 自建应用 AgentId                                        WECOM_AGENT_ID
+      agent-id: ${WECOM_AGENT_ID:}
+      # 应用 Secret                                             WECOM_APP_SECRET
+      app-secret: ${WECOM_APP_SECRET:}
+      # 授权回调地址（前端登录页完整 URL，需与企业微信可信域名一致） WECOM_REDIRECT_URI
+      redirect-uri: ${WECOM_REDIRECT_URI:}
+  # 接口访问日志（请求/返回报文、耗时、traceId 异步输出）
   access-log:
-    # 接口访问日志总开关（打印请求/返回报文、耗时、traceId）
+    # 接口访问日志总开关
     enabled: true
     # 请求/返回报文最大记录长度，超出截断
     max-body-length: 4096

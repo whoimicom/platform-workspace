@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>正在登录...</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex; align-items: center; justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #273248; background: #f5f7fb;
+    }
+    .tip { font-size: 14px; color: #6b7280; }
+  </style>
+</head>
+<body>
+<div class="tip">正在跳转，请稍候...</div>
+<script>
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code');
+    var state = params.get('state');
+    // 前端使用 hash 路由：/platform-web/#/login?code=xxx&state=xxx
+    var base = window.location.pathname.replace(/oauth-callback\.html$/, '') + '#/login';
+    var query = [];
+    if (code) query.push('code=' + encodeURIComponent(code));
+    if (state) query.push('state=' + encodeURIComponent(state));
+    window.location.replace(base + (query.length ? '?' + query.join('&') : ''));
+  })();
+</script>
+</body>
+</html>

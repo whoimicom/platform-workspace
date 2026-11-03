@@ -32,9 +32,11 @@ public final class FingerprintResolver {
         return sha256First16(ipPrefix + "|" + uaIdentity);
     }
 
-    // ---- IP 前缀 ----
-
-    private static String canonicalIpPrefix(HttpServletRequest request) {
+    /**
+     * 从 HttpServletRequest 提取 canonical IP（优先 X-Real-IP → X-Forwarded-For 最右侧公开 IP → remoteAddr），
+     * 返回原始 IP（非前缀裁剪），用于 per-IP 防刷等场景。
+     */
+    public static String resolveIp(HttpServletRequest request) {
         String raw = request.getHeader("X-Real-IP");
         if (isBlank(raw)) {
             raw = rightmostPublicIp(request.getHeader("X-Forwarded-For"));
@@ -42,7 +44,13 @@ public final class FingerprintResolver {
         if (isBlank(raw)) {
             raw = request.getRemoteAddr();
         }
-        return prefix(raw);
+        return raw == null ? "unknown" : raw;
+    }
+
+    // ---- IP 前缀 ----
+
+    private static String canonicalIpPrefix(HttpServletRequest request) {
+        return prefix(resolveIp(request));
     }
 
     /**

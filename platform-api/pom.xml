@@ -51,6 +51,8 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <!-- JSON 序列化使用 Spring Boot 4 自带的 Jackson 3（tools.jackson，JsonMapper），无需额外声明 -->
+
         <!-- MySQL 8 驱动 -->
         <dependency>
             <groupId>com.mysql</groupId>

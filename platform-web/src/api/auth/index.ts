@@ -1,5 +1,15 @@
 import request from "@/utils/request";
-import type { CaptchaInfo, LoginRequest, LoginResult } from "./types";
+import type {
+  CaptchaInfo,
+  LoginRequest,
+  LoginResult,
+  OauthAuthorizeUrl,
+  OauthBindRequest,
+  OauthLoginQuery,
+  OauthLoginResult,
+  OauthProvider,
+  SmsLoginRequest,
+} from "./types";
 
 const AUTH_BASE_URL = "/api/auth";
 
@@ -54,6 +64,70 @@ const AuthAPI = {
       url: `${AUTH_BASE_URL}/refresh-token`,
       method: "post",
       params: { refreshToken },
+      anonymous: true,
+    });
+  },
+
+  // ---- 短信验证码 ----
+
+  /**
+   * 发送短信验证码
+   */
+  sendSmsCode(mobile: string) {
+    return request<unknown, void>({
+      url: `${AUTH_BASE_URL}/sms/send`,
+      method: "post",
+      params: { mobile },
+      anonymous: true,
+    });
+  },
+
+  /**
+   * 手机号验证码直接登录
+   */
+  smsLogin(data: SmsLoginRequest) {
+    return request<unknown, LoginResult>({
+      url: `${AUTH_BASE_URL}/sms/login`,
+      method: "post",
+      data,
+      anonymous: true,
+    });
+  },
+
+  // ---- 三方登录 ----
+
+  /**
+   * 获取三方授权页地址（前端跳转扫码/授权，回调携带 code + state）
+   */
+  getOauthAuthorizeUrl(provider: OauthProvider) {
+    return request<unknown, OauthAuthorizeUrl>({
+      url: `${AUTH_BASE_URL}/oauth/authorize-url`,
+      method: "get",
+      params: { provider },
+      anonymous: true,
+    });
+  },
+
+  /**
+   * 三方 code 换登录态（已绑定直接登录，未绑定返回 bindToken）
+   */
+  oauthLogin(data: OauthLoginQuery) {
+    return request<unknown, OauthLoginResult>({
+      url: `${AUTH_BASE_URL}/oauth/login`,
+      method: "post",
+      data,
+      anonymous: true,
+    });
+  },
+
+  /**
+   * 三方身份 + 手机号验证码绑定后登录
+   */
+  oauthBind(data: OauthBindRequest) {
+    return request<unknown, LoginResult>({
+      url: `${AUTH_BASE_URL}/oauth/bind`,
+      method: "post",
+      data,
       anonymous: true,
     });
   },

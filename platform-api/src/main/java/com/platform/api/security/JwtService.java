@@ -1,6 +1,6 @@
 package com.platform.api.security;
 
-import com.platform.api.config.AppProperties;
+import com.platform.api.config.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -22,14 +22,14 @@ public class JwtService {
     private final long accessExpireSeconds;
     private final long refreshExpireSeconds;
 
-    public JwtService(AppProperties properties) {
-        byte[] secret = properties.getJwt().getSecret().getBytes(StandardCharsets.UTF_8);
+    public JwtService(JwtProperties jwtProperties) {
+        byte[] secret = jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8);
         if (secret.length < 32) {
             throw new IllegalStateException("app.jwt.secret 至少需要 32 个字节");
         }
         this.key = Keys.hmacShaKeyFor(secret);
-        this.accessExpireSeconds = properties.getJwt().getAccessExpireSeconds();
-        this.refreshExpireSeconds = properties.getJwt().getRefreshExpireSeconds();
+        this.accessExpireSeconds = jwtProperties.getAccessExpireSeconds();
+        this.refreshExpireSeconds = jwtProperties.getRefreshExpireSeconds();
     }
 
     public String createAccessToken(Long userId, String username) {
