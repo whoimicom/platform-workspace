@@ -601,8 +601,8 @@ async function handleOauthLogin(provider: OauthProvider) {
         scope: "snsapi_login",
         redirect_uri: encodeURIComponent(providerConfig.redirectUri),
         state,
-        style: "black",
-        href: "",
+        // 新版登录页开关：带底部“快捷登录”入口，面板尺寸 300×450
+        login_type: "jssdk",
       });
     } else {
       await loadSdk(
@@ -1216,7 +1216,7 @@ $input-h: 44px;
     }
   }
 
-  /* 内嵌三方扫码二维码 */
+  /* 内嵌三方扫码二维码：保持官方 300×400 原始面板，不做额外卡片修饰 */
   &__qrcode-title {
     text-align: center;
   }
@@ -1229,36 +1229,23 @@ $input-h: 44px;
   &__qrcode {
     position: relative;
     display: flex;
-    flex: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 312px;
     margin: 4px 0 0;
   }
 
-  /*
-   * 官方 SDK 固定输出 300×400 的 iframe。
-   * 用 zoom 而不是 transform 缩放：zoom 会同步改变布局尺寸，
-   * 避免 transform 只改绘制、布局仍按 400 高而导致的遮挡/裁剪问题。
-   */
   &__qrcode-inner {
     position: relative;
-    flex: none;
-    width: 234px;
-    height: 312px;
+    display: flex;
     overflow: hidden;
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
 
     :deep(iframe) {
       display: block;
       width: 300px;
-      height: 400px;
+      height: 450px;
       border: none;
-      border-radius: 12px;
-      zoom: 0.78;
     }
   }
 
@@ -1280,34 +1267,16 @@ $input-h: 44px;
     text-align: center;
   }
 
-  /* 视口高度不足时进一步缩小二维码，避免整页出现滚动条 */
+  /* 视口高度不足时整体缩小官方面板，避免整页出现滚动条 */
   @media (max-height: 820px) {
-    &__qrcode {
-      min-height: 280px;
-    }
-
-    &__qrcode-inner {
-      width: 210px;
-      height: 280px;
-
-      :deep(iframe) {
-        zoom: 0.7;
-      }
+    &__qrcode-inner :deep(iframe) {
+      zoom: 0.85;
     }
   }
 
   @media (max-height: 700px) {
-    &__qrcode {
-      min-height: 240px;
-    }
-
-    &__qrcode-inner {
-      width: 180px;
-      height: 240px;
-
-      :deep(iframe) {
-        zoom: 0.6;
-      }
+    &__qrcode-inner :deep(iframe) {
+      zoom: 0.7;
     }
   }
 
