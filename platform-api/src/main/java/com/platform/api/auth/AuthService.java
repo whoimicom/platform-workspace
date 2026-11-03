@@ -5,6 +5,7 @@ import com.platform.api.system.user.SysUser;
 import com.platform.api.system.user.SysUserRepository;
 import com.platform.api.security.JwtService;
 import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -26,11 +27,11 @@ public class AuthService {
         this.captchaService = captchaService;
     }
 
-    public AuthDtos.LoginResult login(AuthDtos.LoginRequest request) {
+    public AuthDtos.LoginResult login(AuthDtos.LoginRequest request, HttpServletRequest httpRequest) {
         if (request.username() == null || request.username().isBlank() || request.password() == null) {
             throw BusinessException.badRequest("用户名和密码不能为空");
         }
-        captchaService.validate(request.captchaId(), request.captchaCode());
+        captchaService.validate(request.captchaToken(), request.captchaCode(), httpRequest);
 
         SysUser user = userRepository.findByUsername(request.username().trim())
                 .orElseThrow(() -> BusinessException.badRequest("用户名或密码错误"));

@@ -1,6 +1,7 @@
 package com.platform.api.auth;
 
 import com.platform.api.common.ResultInfo;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,13 +23,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResultInfo<AuthDtos.LoginResult> login(@RequestBody AuthDtos.LoginRequest request) {
-        return ResultInfo.ok(authService.login(request));
+    public ResultInfo<AuthDtos.LoginResult> login(@RequestBody AuthDtos.LoginRequest request,
+                                                  HttpServletRequest httpRequest) {
+        return ResultInfo.ok(authService.login(request, httpRequest));
     }
 
     @GetMapping("/captcha")
-    public ResultInfo<AuthDtos.CaptchaInfo> captcha() {
-        return ResultInfo.ok(captchaService.create());
+    public ResultInfo<AuthDtos.CaptchaInfo> captcha(HttpServletRequest request) {
+        return ResultInfo.ok(captchaService.create(request));
     }
 
     @PostMapping("/refresh-token")

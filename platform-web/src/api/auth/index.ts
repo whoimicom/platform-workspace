@@ -8,10 +8,10 @@ const AuthAPI = {
    * 登录
    */
   login(data: LoginRequest) {
-    const payload: Pick<LoginRequest, "username" | "password" | "captchaId" | "captchaCode"> = {
+    const payload: Pick<LoginRequest, "username" | "password" | "captchaToken" | "captchaCode"> = {
       username: data.username,
       password: data.password,
-      captchaId: data.captchaId,
+      captchaToken: data.captchaToken,
       captchaCode: data.captchaCode,
     };
 

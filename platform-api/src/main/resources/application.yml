@@ -27,6 +27,13 @@ spring:
 app:
   # 是否校验图形验证码（前端登录页默认展示验证码）
   captcha-enabled: true
+  captcha:
+    # 留空则复用 app.jwt.secret；生产环境建议单独指定，至少 32 字节
+    secret:
+    # 验证码 token 有效期（秒）
+    expire-seconds: 300
+    # 本地防重放黑名单容量上限
+    replay-cache-max-size: 100000
   # 新增用户及 SQL 初始账号 NEED_INIT 的默认密码
   default-password: 123456
   jwt:

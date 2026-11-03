@@ -6,8 +6,8 @@ export interface LoginRequest {
   username: string;
   /** 密码 */
   password: string;
-  /** 验证码缓存 key */
-  captchaId?: string;
+  /** 验证码签名 token（无状态，携带指纹绑定） */
+  captchaToken?: string;
   /** 验证码 */
   captchaCode?: string;
   /** 记住我 */
@@ -32,8 +32,8 @@ export interface LoginResult {
  * 验证码信息
  */
 export interface CaptchaInfo {
-  /** 验证码缓存 key */
-  captchaId: string;
+  /** 验证码签名 token */
+  captchaToken: string;
   /** 验证码图片 Base64 */
   captchaBase64: string;
 }

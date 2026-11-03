@@ -45,6 +45,12 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- Caffeine 本地缓存（验证码防重放、短 TTL 等场景） -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- MySQL 8 驱动 -->
         <dependency>
             <groupId>com.mysql</groupId>

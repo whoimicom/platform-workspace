@@ -9,12 +9,12 @@ public final class AuthDtos {
     }
 
     public record LoginRequest(String username, String password,
-                               String captchaId, String captchaCode, Boolean rememberMe) {
+                               String captchaToken, String captchaCode, Boolean rememberMe) {
     }
 
     public record LoginResult(String accessToken, String refreshToken, String tokenType, long expiresIn) {
     }
 
-    public record CaptchaInfo(String captchaId, String captchaBase64) {
+    public record CaptchaInfo(String captchaToken, String captchaBase64) {
     }
 }

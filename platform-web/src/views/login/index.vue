@@ -108,7 +108,7 @@
                 </el-button>
               </el-form>
 
-              <div class="login-card__demo">
+              <div v-if="demoAccountsEnabled" class="login-card__demo">
                 <div class="login-card__demo-title">演示账号 · 密码统一 123456，点击直接填入</div>
                 <div class="flex flex-wrap gap-8px">
                   <button
@@ -179,7 +179,7 @@ const LockIcon = markRaw(Lock);
 const loginFormData = ref<LoginRequest>({
   username: "whoimi",
   password: "123456",
-  captchaId: "",
+  captchaToken: "",
   captchaCode: "",
   rememberMe: AuthStorage.getRememberMe(),
 });
@@ -192,6 +192,9 @@ const loginRules = computed(() => ({
   ],
   captchaCode: [{ required: true, trigger: "blur", message: "请输入验证码" }],
 }));
+
+// 演示账号功能开关：暂时屏蔽，改为 true 即可恢复
+const demoAccountsEnabled = false;
 
 // 演示账号（与内置用户一致），点击一键填入
 const demoAccounts = [
@@ -217,7 +220,7 @@ function getCaptcha() {
   codeLoading.value = true;
   AuthAPI.getCaptcha()
     .then((d) => {
-      loginFormData.value.captchaId = d.captchaId;
+      loginFormData.value.captchaToken = d.captchaToken;
       captchaBase64.value = d.captchaBase64;
     })
     .finally(() => (codeLoading.value = false));
