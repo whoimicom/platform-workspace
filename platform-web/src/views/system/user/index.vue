@@ -151,7 +151,6 @@
             <el-table-column label="架构" min-width="140" prop="orgName" show-overflow-tooltip />
             <el-table-column label="角色" prop="roleNames" min-width="160" show-overflow-tooltip />
             <el-table-column label="手机号码" prop="mobile" width="130" />
-            <el-table-column label="邮箱" prop="email" min-width="180" show-overflow-tooltip />
             <el-table-column label="创建时间" prop="createTime" width="160" show-overflow-tooltip />
             <el-table-column label="操作" fixed="right" width="240">
               <template #default="scope">
@@ -193,6 +192,10 @@
           <el-input v-model="formData.nickname" placeholder="请输入用户昵称" />
         </el-form-item>
 
+        <el-form-item label="手机号码" prop="mobile">
+          <el-input v-model="formData.mobile" placeholder="请输入手机号码" maxlength="11" />
+        </el-form-item>
+
         <el-form-item label="所属架构" prop="orgId">
           <el-tree-select
             v-model="formData.orgId"
@@ -217,10 +220,6 @@
               :value="item.value"
             />
           </el-select>
-        </el-form-item>
-
-        <el-form-item label="手机号码" prop="mobile">
-          <el-input v-model="formData.mobile" placeholder="请输入手机号码" maxlength="11" />
         </el-form-item>
 
         <el-form-item label="邮箱" prop="email">
