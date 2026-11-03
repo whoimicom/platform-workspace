@@ -16,6 +16,27 @@ export function setupPermissionGuard() {
     NProgress.start();
 
     try {
+      // 统一认证回调：认证中心携带 code 回跳应用根路径（hash 路由，参数在 search 上）
+      const search = new URLSearchParams(window.location.search);
+      const oidcError = search.get("error");
+      const oidcCode = search.get("code");
+      const oidcState = search.get("state");
+
+      if (oidcCode && oidcState) {
+        // 先清理地址栏，避免刷新时重复消费同一授权码
+        window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+        NProgress.done();
+        const redirect = await useUserStore().completeOidcLogin(oidcCode, oidcState);
+        return redirect || "/";
+      }
+
+      if (oidcError) {
+        console.error("统一认证失败:", oidcError, search.get("error_description"));
+        window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+        NProgress.done();
+        return "/login";
+      }
+
       const isLoggedIn = useUserStore().isLoggedIn();
 
       // 未登录处理

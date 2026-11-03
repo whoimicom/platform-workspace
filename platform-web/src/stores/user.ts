@@ -1,8 +1,13 @@
 import { store } from "@/stores";
 
 import AuthAPI from "@/api/auth";
+import {
+  buildOidcLogoutUrl,
+  exchangeOidcCode,
+  refreshOidcTokens,
+  startOidcLogin,
+} from "@/api/auth/oidc";
 import UserAPI from "@/api/system/user";
-import type { LoginRequest } from "@/api/auth";
 import type { UserInfo } from "@/api/system/user";
 
 import { AuthStorage, authSessionRevision } from "@/utils/auth";
@@ -24,16 +29,23 @@ const createEmptyUserInfo = (): UserInfo => ({ roles: [], perms: [] });
  */
 export const useUserStore = defineStore("user", () => {
   const userInfo = ref<UserInfo>(createEmptyUserInfo());
-  const rememberMe = ref(AuthStorage.getRememberMe());
 
   /**
-   * 登录
+   * 发起统一认证登录：整页跳转认证中心（OIDC 授权码 + PKCE），
+   * 认证完成后由路由守卫调用 completeOidcLogin 建立本地会话。
    */
-  async function login(loginRequest: LoginRequest): Promise<void> {
-    const { accessToken, refreshToken } = await AuthAPI.login(loginRequest);
-    rememberMe.value = loginRequest.rememberMe ?? false;
-    AuthStorage.setTokens(accessToken, refreshToken, rememberMe.value);
+  async function login(redirectPath = "/"): Promise<void> {
+    await startOidcLogin(redirectPath);
+  }
+
+  /**
+   * 统一认证回调：授权码换取令牌并建立本地会话，返回登录前目标路径。
+   */
+  async function completeOidcLogin(code: string, state: string): Promise<string> {
+    const { tokens, redirect } = await exchangeOidcCode(code, state);
+    AuthStorage.setTokens(tokens.accessToken, tokens.refreshToken, false);
     sessionExpired = false;
+    return redirect;
   }
 
   let refreshPromise: Promise<void> | null = null;
@@ -99,13 +111,15 @@ export const useUserStore = defineStore("user", () => {
   }
 
   /**
-   * 登出，服务端退出失败也清理本地状态
+   * 登出：清理本地会话并终止认证中心 SSO 会话
    */
   async function logout(): Promise<void> {
     try {
       await AuthAPI.logout();
     } finally {
       resetAllState();
+      // 跳转认证中心登出，终止 SSO 会话后回到应用根路径
+      window.location.href = buildOidcLogoutUrl();
     }
   }
 
@@ -151,7 +165,7 @@ export const useUserStore = defineStore("user", () => {
   }
 
   /**
-   * 刷新 token
+   * 刷新 token（直接向认证中心轮换刷新令牌）
    */
   async function doRefreshToken(): Promise<void> {
     const currentRefreshToken = AuthStorage.getRefreshToken();
@@ -161,19 +175,18 @@ export const useUserStore = defineStore("user", () => {
       throw new Error("没有有效的刷新令牌");
     }
 
-    const { accessToken, refreshToken: newRefreshToken } =
-      await AuthAPI.refreshToken(currentRefreshToken);
+    const tokens = await refreshOidcTokens(currentRefreshToken);
     // 续期期间可能切换账号，旧结果不得覆盖新凭证。
     if (revision !== authSessionRevision.value) throw new Error("登录会话已切换");
     if (currentRefreshToken !== AuthStorage.getRefreshToken()) throw new Error("登录凭证已更新");
-    AuthStorage.setTokens(accessToken, newRefreshToken, AuthStorage.getRememberMe(), true);
+    AuthStorage.setTokens(tokens.accessToken, tokens.refreshToken, AuthStorage.getRememberMe(), true);
   }
 
   return {
     userInfo,
-    rememberMe,
     isLoggedIn: () => !!AuthStorage.getAccessToken(),
     login,
+    completeOidcLogin,
     logout,
     fetchUserInfo,
     resetAllState,

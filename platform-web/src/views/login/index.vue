@@ -36,111 +36,25 @@
 
       <div class="login-card">
         <div class="login-card__inner">
-          <transition name="fade-slide" mode="out-in">
-            <div v-if="component === 'login'" key="login" class="login-card__form">
-              <h2 class="login-card__title">欢迎回来</h2>
-              <p class="login-card__desc">请完成身份验证后进入系统</p>
+          <div class="login-card__form">
+            <h2 class="login-card__title">欢迎回来</h2>
+            <p class="login-card__desc">请使用公司统一账号登录</p>
 
-              <el-form
-                ref="loginFormRef"
-                :model="loginFormData"
-                :rules="loginRules"
-                size="large"
-                :validate-on-rule-change="false"
-              >
-                <el-form-item prop="username">
-                  <el-input
-                    v-model.trim="loginFormData.username"
-                    placeholder="用户名"
-                    :prefix-icon="UserIcon"
-                  />
-                </el-form-item>
+            <el-button
+              type="primary"
+              size="large"
+              class="login-card__submit"
+              :loading="redirecting"
+              @click="handleSsoLogin"
+            >
+              <span class="i-svg:security login-card__sso-icon" />
+              使用统一认证登录
+            </el-button>
 
-                <el-tooltip :visible="isCapsLock" content="大写锁定已开启" placement="right">
-                  <el-form-item prop="password">
-                    <el-input
-                      v-model.trim="loginFormData.password"
-                      placeholder="密码"
-                      type="password"
-                      show-password
-                      :prefix-icon="LockIcon"
-                      @keyup="checkCapsLock"
-                      @keyup.enter="handleLoginSubmit"
-                    />
-                  </el-form-item>
-                </el-tooltip>
-
-                <el-form-item prop="captchaCode">
-                  <div class="flex w-full gap-12px">
-                    <el-input
-                      v-model.trim="loginFormData.captchaCode"
-                      placeholder="验证码"
-                      class="min-w-0 flex-1"
-                      @keyup.enter="handleLoginSubmit"
-                    >
-                      <template #prefix>
-                        <span class="i-svg:security login-card__prefix-icon" />
-                      </template>
-                    </el-input>
-                    <div class="login-card__captcha" @click="getCaptcha">
-                      <el-icon v-if="codeLoading" class="is-loading" :size="16">
-                        <Loading />
-                      </el-icon>
-                      <img v-else-if="captchaBase64" :src="captchaBase64" alt="验证码" />
-                      <el-icon v-else :size="16"><Refresh /></el-icon>
-                    </div>
-                  </div>
-                </el-form-item>
-
-                <div class="login-card__options">
-                  <el-checkbox v-model="loginFormData.rememberMe">记住我</el-checkbox>
-                  <a @click="showForm('resetPwd')">忘记密码？</a>
-                </div>
-
-                <el-button
-                  :loading="loading"
-                  type="primary"
-                  size="large"
-                  class="login-card__submit"
-                  @click="handleLoginSubmit"
-                >
-                  登录
-                </el-button>
-              </el-form>
-
-              <div class="login-card__demo">
-                <div class="login-card__demo-title">演示账号 · 密码统一 123456，点击直接填入</div>
-                <div class="flex flex-wrap gap-8px">
-                  <button
-                    v-for="account in demoAccounts"
-                    :key="account.username"
-                    type="button"
-                    class="login-card__demo-chip"
-                    @click="fillDemoAccount(account)"
-                  >
-                    {{ account.label }}
-                  </button>
-                </div>
-              </div>
-
-              <div class="login-card__alt">
-                <div class="login-card__alt-divider">其他登录方式</div>
-                <div class="flex gap-12px">
-                  <button class="login-card__alt-btn">
-                    <span class="i-svg:security login-card__alt-icon" />
-                    统一认证
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <ResetPwd
-              v-else
-              key="resetPwd"
-              class="login-card__form"
-              @update:model-value="component = $event"
-            />
-          </transition>
+            <p class="login-card__sso-tip">
+              登录由统一认证中心（OIDC）处理，一次登录即可访问公司各管理系统
+            </p>
+          </div>
         </div>
 
         <div class="login-footer">Copyright © 2026 whoimi.com</div>
@@ -152,118 +66,26 @@
 <script setup lang="ts">
 defineOptions({ name: "LoginPage", inheritAttrs: false });
 
-import { Lock, Loading, Refresh, User } from "@element-plus/icons-vue";
-import type { FormInstance } from "element-plus";
-import AuthAPI from "@/api/auth";
-import type { LoginRequest } from "@/api/auth";
-import router from "@/router";
 import { useUserStore } from "@/stores";
-import { AuthStorage } from "@/utils/auth";
 import { appConfig } from "@/settings";
-import ResetPwd from "./components/ResetPwd.vue";
 import logo from "@/assets/images/logo.svg";
 
 const userStore = useUserStore();
 const route = useRoute();
-const component = ref<"login" | "resetPwd">("login");
-
-const loginFormRef = ref<FormInstance>();
-const loading = ref(false);
-const isCapsLock = ref(false);
-const captchaBase64 = ref<string>();
-const codeLoading = ref(false);
-
-const UserIcon = markRaw(User);
-const LockIcon = markRaw(Lock);
-
-const loginFormData = ref<LoginRequest>({
-  username: "whoimi",
-  password: "123456",
-  captchaId: "",
-  captchaCode: "",
-  rememberMe: AuthStorage.getRememberMe(),
-});
-
-const loginRules = computed(() => ({
-  username: [{ required: true, trigger: "blur", message: "请输入用户名" }],
-  password: [
-    { required: true, trigger: "blur", message: "请输入密码" },
-    { min: 6, message: "密码不能少于6位", trigger: "blur" },
-  ],
-  captchaCode: [{ required: true, trigger: "blur", message: "请输入验证码" }],
-}));
-
-// 演示账号（与内置用户一致），点击一键填入
-const demoAccounts = [
-  { username: "employee", label: "普通员工" },
-  { username: "org_manager", label: "架构主管" },
-  { username: "manager", label: "总经理" },
-  { username: "finance", label: "财务" },
-  { username: "clerk", label: "行政" },
-];
+const redirecting = ref(false);
 
 /**
- * 填充演示账号
+ * 跳转统一认证中心完成登录（认证后再回到本应用）
  */
-function fillDemoAccount(account: { username: string }): void {
-  loginFormData.value.username = account.username;
-  loginFormData.value.password = "123456";
-}
-
-/**
- * 刷新验证码
- */
-function getCaptcha() {
-  codeLoading.value = true;
-  AuthAPI.getCaptcha()
-    .then((d) => {
-      loginFormData.value.captchaId = d.captchaId;
-      captchaBase64.value = d.captchaBase64;
-    })
-    .finally(() => (codeLoading.value = false));
-}
-
-/**
- * 提交登录表单
- */
-async function handleLoginSubmit() {
-  const valid = await loginFormRef.value?.validate().then(
-    () => true,
-    () => false
-  );
-  if (!valid) return;
-
-  loading.value = true;
+async function handleSsoLogin() {
+  redirecting.value = true;
   try {
-    await userStore.login(loginFormData.value).then(
-      async () => {
-        const redirectPath = (route.query.redirect as string) || "/";
-        await router.push(decodeURIComponent(redirectPath));
-      },
-      () => getCaptcha()
-    );
+    const redirectPath = (route.query.redirect as string) || "/";
+    await userStore.login(decodeURIComponent(redirectPath));
   } finally {
-    loading.value = false;
+    redirecting.value = false;
   }
 }
-
-/**
- * 检测大写锁定是否打开
- */
-function checkCapsLock(event: KeyboardEvent) {
-  if (event instanceof KeyboardEvent) {
-    isCapsLock.value = event.getModifierState("CapsLock");
-  }
-}
-
-/**
- * 切换登录区展示的表单
- */
-function showForm(type: "resetPwd") {
-  component.value = type;
-}
-
-onMounted(() => getCaptcha());
 </script>
 
 <style lang="scss" scoped>
@@ -485,58 +307,20 @@ $input-h: 44px;
     color: $text-muted;
   }
 
-  &__prefix-icon {
+  &__sso-icon {
     display: inline-flex;
-    width: 14px;
-    height: 14px;
-    color: var(--el-text-color-placeholder);
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    color: currentcolor;
   }
 
-  &__captcha {
-    box-sizing: border-box;
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    width: 108px;
-    height: $input-h;
-    overflow: hidden;
-    cursor: pointer;
-    background: var(--el-fill-color-blank);
-    border: 1px solid var(--el-border-color);
-    border-radius: var(--el-border-radius-base);
-    transition: border-color 0.2s;
-
-    &:hover {
-      border-color: var(--el-color-primary);
-    }
-
-    img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-  }
-
-  &__options {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 22px;
-    font-size: 14px;
-    color: $text-secondary;
-
-    a {
-      font-weight: 500;
-      color: var(--el-color-primary);
-      cursor: pointer;
-      transition: opacity 0.15s;
-
-      &:hover {
-        opacity: 0.8;
-      }
-    }
+  &__sso-tip {
+    margin-top: 18px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: $text-muted;
+    text-align: center;
   }
 
   &__submit {
@@ -554,94 +338,6 @@ $input-h: 44px;
     &:focus,
     &:focus-visible {
       outline: none;
-    }
-  }
-
-  &__demo {
-    margin-top: 20px;
-
-    &-title {
-      margin-bottom: 10px;
-      font-size: 12px;
-      color: $text-muted;
-    }
-
-    &-chip {
-      height: 28px;
-      padding: 0 12px;
-      font-size: 12px;
-      color: $text-secondary;
-      cursor: pointer;
-      background: color-mix(in srgb, var(--el-color-primary) 5%, transparent);
-      border: 1px solid color-mix(in srgb, var(--el-color-primary) 16%, transparent);
-      border-radius: 999px;
-      transition:
-        color 0.2s,
-        background 0.2s,
-        border-color 0.2s;
-
-      &:hover {
-        color: var(--el-color-primary);
-        background: color-mix(in srgb, var(--el-color-primary) 10%, transparent);
-        border-color: color-mix(in srgb, var(--el-color-primary) 40%, transparent);
-      }
-    }
-  }
-
-  /* 半透明白底按钮，在渐变背景上保持可见；hover 时提实并加深投影 */
-  &__alt {
-    margin-top: 28px;
-
-    &-divider {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 14px;
-      font-size: 13px;
-      color: $text-muted;
-
-      &::before,
-      &::after {
-        flex: 1;
-        height: 1px;
-        content: "";
-        background: color-mix(in srgb, var(--brand-deep) 12%, transparent);
-      }
-    }
-
-    &-btn {
-      display: flex;
-      flex: 1;
-      gap: 8px;
-      align-items: center;
-      justify-content: center;
-      height: 44px;
-      padding: 0;
-      font-size: 14px;
-      color: $text-secondary;
-      cursor: pointer;
-      background: rgb(255 255 255 / 80%);
-      border: 1px solid color-mix(in srgb, var(--brand-deep) 10%, transparent);
-      border-radius: 8px;
-      box-shadow: 0 1px 2px color-mix(in srgb, var(--brand-deep) 6%, transparent);
-      backdrop-filter: blur(4px);
-      transition:
-        color 0.2s,
-        background 0.2s,
-        border-color 0.2s,
-        box-shadow 0.2s;
-
-      &:hover {
-        color: var(--el-color-primary);
-        background: #fff;
-        border-color: color-mix(in srgb, var(--el-color-primary) 35%, transparent);
-        box-shadow: 0 4px 12px color-mix(in srgb, var(--el-color-primary) 14%, transparent);
-      }
-    }
-
-    &-icon {
-      width: 16px;
-      height: 16px;
     }
   }
 }
@@ -727,59 +423,10 @@ $input-h: 44px;
   &__desc {
     color: rgb(255 255 255 / 30%);
   }
-
-  &__demo-title {
-    color: rgb(255 255 255 / 35%);
-  }
-
-  &__demo-chip {
-    color: rgb(255 255 255 / 70%);
-    background: rgb(255 255 255 / 6%);
-    border-color: rgb(255 255 255 / 14%);
-
-    &:hover {
-      color: #fff;
-      background: rgb(255 255 255 / 12%);
-      border-color: rgb(255 255 255 / 28%);
-    }
-  }
-
-  &__alt-divider {
-    color: rgb(255 255 255 / 20%);
-
-    &::before,
-    &::after {
-      background: rgb(255 255 255 / 12%);
-    }
-  }
-
-  &__alt-btn {
-    color: rgb(255 255 255 / 65%);
-    background: rgb(255 255 255 / 6%);
-    border-color: rgb(255 255 255 / 12%);
-    box-shadow: none;
-
-    &:hover {
-      color: #fff;
-      background: rgb(255 255 255 / 12%);
-      border-color: rgb(255 255 255 / 24%);
-    }
-  }
 }
 
 .dark .login-footer {
   color: rgb(255 255 255 / 15%);
-}
-
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: all 0.2s ease;
-}
-
-.fade-slide-enter-from,
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(6px);
 }
 
 @keyframes login-pane-in {

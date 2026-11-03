@@ -1,12 +1,9 @@
-package com.platform.api.config;
+package com.platform.api.security;
 
-import com.platform.api.security.JwtAuthenticationFilter;
-import com.platform.api.security.JwtService;
-import com.platform.api.security.RestAccessDeniedHandler;
-import com.platform.api.security.RestAuthenticationEntryPoint;
-import com.platform.api.security.UserAuthorityService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -16,14 +13,19 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * OIDC 资源服务器配置：校验统一认证中心（platform-rs-auth）签发的 JWT，
+ * 并按用户实时加载本地角色与权限（各系统保留自己的授权规则）。
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -36,12 +38,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   JwtService jwtService,
                                                    UserAuthorityService userAuthorityService,
+                                                   @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:http://localhost:9000}")
+                                                   String issuerUri,
                                                    RestAuthenticationEntryPoint authenticationEntryPoint,
                                                    RestAccessDeniedHandler accessDeniedHandler) throws Exception {
-        JwtAuthenticationFilter jwtAuthenticationFilter =
-                new JwtAuthenticationFilter(jwtService, userAuthorityService);
+        Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter =
+                new OidcJwtAuthenticationConverter(userAuthorityService, issuerUri);
 
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
@@ -51,13 +54,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(registry -> registry
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/login", "/api/auth/captcha",
-                                "/api/auth/refresh-token").permitAll()
                         .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(authenticationEntryPoint)
-                        .accessDeniedHandler(accessDeniedHandler))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .accessDeniedHandler(accessDeniedHandler));
 
         return http.build();
     }

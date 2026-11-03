@@ -24,18 +24,16 @@ spring:
       password: ${REDIS_PASSWORD:}
       database: 13
       port: 6379
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # 统一认证中心（platform-rs-auth），公钥经 JWKS 获取
+          issuer-uri: ${AUTH_ISSUER:http://localhost:9000}
+          jwk-set-uri: ${AUTH_JWKS_URI:http://localhost:9000/jwks.json}
 app:
-  # 是否校验图形验证码（前端登录页默认展示验证码）
-  captcha-enabled: true
   # 新增用户及 SQL 初始账号 NEED_INIT 的默认密码
   default-password: 123456
-  jwt:
-    # 至少 32 字节，生产环境务必修改
-    secret: platform-api-default-secret-change-me-0123456789abcdef
-    # 访问令牌有效期（秒）
-    access-expire-seconds: 1800
-    # 刷新令牌有效期（秒）
-    refresh-expire-seconds: 604800
   access-log:
     # 接口访问日志总开关（打印请求/返回报文、耗时、traceId）
     enabled: true
@@ -43,4 +41,3 @@ app:
     max-body-length: 4096
     # 慢请求阈值（毫秒），超过以 WARN 输出
     slow-threshold-ms: 3000
-

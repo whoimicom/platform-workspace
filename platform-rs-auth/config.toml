@@ -1,0 +1,16 @@
+# OIDC 统一认证中心默认配置
+# 部署时优先读取环境变量，未设置时回退到此文件；环境变量与 TOML 字段的对应关系见 src/config.rs。
+
+# 对外签发地址（OIDC issuer），需与浏览器可达地址一致
+issuer = "http://localhost:9000"
+# 监听端口
+port = 9000
+# 允许跨域的来源（SPA 直连 /token 时需要）
+cors_origins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:4173",
+]
+
+# MySQL 连接串（复用 platform 库的 sys_user 作为用户主数据）
+db_url = "mysql://platform:platform123456@127.0.0.1:3306/platform"
