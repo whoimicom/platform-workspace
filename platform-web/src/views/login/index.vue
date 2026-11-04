@@ -15,33 +15,51 @@
         </div>
 
         <div class="login-brand__hero">
-          <h1 class="login-brand__title">{{ appConfig.title }}</h1>
-          <p class="login-brand__desc">基于 Vue 3 / Spring Boot 的前后端分离管理平台</p>
+          <p class="login-brand__eyebrow">WHOIMI PLATFORM</p>
+          <h1 class="login-brand__title">
+            让组织与数据
+            <br />
+            <em>高效协同</em>
+            运转
+          </h1>
+          <p class="login-brand__desc">
+            一体化管理用户、权限与业务流程，开箱即用的企业级前后端分离方案
+          </p>
           <div class="login-brand__features">
             <span class="login-brand__feature">
-              <span class="login-brand__feature-text">Vue 3</span>
+              <el-icon class="login-brand__feature-icon"><Check /></el-icon>
+              Vue 3
             </span>
             <span class="login-brand__feature">
-              <span class="login-brand__feature-text">Spring Boot 4</span>
+              <el-icon class="login-brand__feature-icon"><Check /></el-icon>
+              Spring Boot 4
             </span>
             <span class="login-brand__feature">
-              <span class="login-brand__feature-text">Element Plus</span>
+              <el-icon class="login-brand__feature-icon"><Check /></el-icon>
+              Element Plus
             </span>
             <span class="login-brand__feature">
-              <span class="login-brand__feature-text">MySQL</span>
+              <el-icon class="login-brand__feature-icon"><Check /></el-icon>
+              MySQL
             </span>
           </div>
         </div>
       </div>
 
       <div class="login-card">
+        <div class="login-card__panel">
+        <div class="login-card__mobile-brand">
+          <el-image :src="logo" class="login-card__mobile-logo" />
+          <span class="login-card__mobile-name">{{ appConfig.title }}</span>
+        </div>
+
         <div class="login-card__inner">
           <transition name="fade-slide" mode="out-in">
             <div v-if="component === 'login'" key="login" class="login-card__form">
               <!-- 账号密码登录 -->
               <template v-if="loginMode === 'password'">
               <h2 class="login-card__title">欢迎回来</h2>
-              <p class="login-card__desc">请完成身份验证后进入系统</p>
+              <p class="login-card__desc">登录你的账号，继续今天的工作</p>
 
               <el-form
                 ref="loginFormRef"
@@ -147,7 +165,7 @@
               <!-- 手机号验证码登录 -->
               <template v-else-if="loginMode === 'sms'">
                 <h2 class="login-card__title">验证码登录</h2>
-                <p class="login-card__desc">请输入已注册的手机号，获取验证码后登录</p>
+                <p class="login-card__desc">输入已注册的手机号，验证码将发送至该手机</p>
 
                 <el-form ref="smsFormRef" :model="smsLoginDialog" :rules="smsLoginRules" size="large">
                   <el-form-item prop="mobile">
@@ -346,8 +364,14 @@
             />
           </transition>
         </div>
+        </div>
+      </div>
 
-        <div class="login-footer">Copyright © 2026 whoimi.com</div>
+      <div class="login-footer">
+        <span class="login-footer__copy">Copyright ©</span>
+        <span class="login-footer__year">
+          2026 <a href="https://whoimi.com" target="_blank" rel="noopener">whoimi.com</a>
+        </span>
       </div>
     </div>
   </div>
@@ -357,7 +381,7 @@
 defineOptions({ name: "LoginPage", inheritAttrs: false });
 
 import { ElMessage, type FormInstance } from "element-plus";
-import { Lock, Loading, Phone, Refresh, User } from "@element-plus/icons-vue";
+import { Check, Lock, Loading, Phone, Refresh, User } from "@element-plus/icons-vue";
 import AuthAPI from "@/api/auth";
 import type { LoginRequest, OauthProvider } from "@/api/auth";
 import router from "@/router";
@@ -1030,8 +1054,8 @@ $input-h: 44px;
   display: flex;
   min-height: 100vh;
   overflow: auto;
-  /* 浅色渐变底色；桌面端被品牌区背景与白色卡片完全覆盖，窄屏两区透明后透出 */
-  background: linear-gradient(180deg, #ffffff 0%, #dbeafe 100%);
+  /* 兜底底色；桌面端被品牌区与登录面板覆盖，窄屏透出 */
+  background: linear-gradient(165deg, #f8fafc 0%, #eaf2ff 60%, #dbeafe 100%);
 }
 
 .login-toolbar {
@@ -1049,6 +1073,7 @@ $input-h: 44px;
 }
 
 .login-layout {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 100%;
@@ -1057,24 +1082,45 @@ $input-h: 44px;
 .login-brand {
   position: relative;
   display: flex;
-  flex: 0 0 65%;
+  flex: 0 0 60%;
   flex-direction: column;
   min-height: 100vh;
-  padding: 28px 64px 48px;
+  padding: 28px 72px 48px 64px;
   overflow: hidden;
-  // 白云蓝海渐变（原 bg.svg）：白 → 主题色浅蓝，各 stop 按主题色混合比例派生
+  // 深海渐变（原 bg.svg 升级）：顶部大量留白 → 底部主题色纵深
   background: linear-gradient(
     180deg,
     #fff 0%,
-    color-mix(in srgb, var(--el-color-primary) 3%, #fff) 16%,
-    color-mix(in srgb, var(--el-color-primary) 5%, #fff) 32%,
-    color-mix(in srgb, var(--el-color-primary) 6%, #fff) 48%,
-    color-mix(in srgb, var(--el-color-primary) 8%, #fff) 62%,
-    color-mix(in srgb, var(--el-color-primary) 15%, #fff) 76%,
-    color-mix(in srgb, var(--el-color-primary) 25%, #fff) 88%,
-    color-mix(in srgb, var(--el-color-primary) 42%, #fff) 100%
+    color-mix(in srgb, var(--el-color-primary) 4%, #fff) 30%,
+    color-mix(in srgb, var(--el-color-primary) 12%, #fff) 62%,
+    color-mix(in srgb, var(--el-color-primary) 38%, #fff) 100%
   );
   animation: login-pane-in 0.36s ease-out both;
+
+  // 装饰光斑：右上/左下两团主色柔光，让纯渐变更透气
+  &::before,
+  &::after {
+    position: absolute;
+    content: "";
+    border-radius: 50%;
+    filter: blur(80px);
+  }
+
+  &::before {
+    top: -140px;
+    right: -80px;
+    width: 420px;
+    height: 420px;
+    background: color-mix(in srgb, var(--el-color-primary) 22%, transparent);
+  }
+
+  &::after {
+    bottom: -180px;
+    left: -120px;
+    width: 480px;
+    height: 480px;
+    background: color-mix(in srgb, var(--el-color-primary) 14%, transparent);
+  }
 
   &__header,
   &__hero {
@@ -1090,12 +1136,13 @@ $input-h: 44px;
 
   &__logo {
     box-sizing: border-box;
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     padding: 5px;
-    background: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
+    background: rgb(255 255 255 / 70%);
     border: 1px solid color-mix(in srgb, var(--el-color-primary) 18%, transparent);
     border-radius: 12px;
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--el-color-primary) 14%, transparent);
   }
 
   &__identity {
@@ -1107,7 +1154,7 @@ $input-h: 44px;
 
   &__name {
     font-size: 24px;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1;
     color: var(--brand-deep);
   }
@@ -1131,65 +1178,68 @@ $input-h: 44px;
     flex: 1;
     flex-direction: column;
     justify-content: center;
-    width: min(760px, 100%);
-    padding: 40px 0 60px;
+    width: min(680px, 100%);
+    padding: 40px 0 64px;
+  }
+
+  &__eyebrow {
+    margin: 0 0 14px;
+    font-size: 13px;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--brand-deep) 65%, transparent);
+    letter-spacing: 5px;
   }
 
   &__title {
     margin: 0;
-    font-size: 36px;
+    font-size: 46px;
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.2;
     color: var(--brand-deep);
-    letter-spacing: 0;
+
+    // 强调词用主题色渐变文字
+    em {
+      font-style: normal;
+      background: linear-gradient(120deg, var(--el-color-primary), var(--brand-strong));
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
   }
 
   &__desc {
-    max-width: 560px;
-    margin: 16px 0 0;
-    font-size: 18px;
-    line-height: 1.6;
+    max-width: 520px;
+    margin: 18px 0 0;
+    font-size: 17px;
+    line-height: 1.7;
     color: #475569;
   }
 
   &__features {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    max-width: 100%;
-    margin-top: 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 36px;
   }
 
   &__feature {
-    position: relative;
     display: inline-flex;
-    gap: 10px;
+    gap: 6px;
     align-items: center;
     height: 32px;
-    padding: 0 15px;
-    font-size: 14px;
+    padding: 0 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: color-mix(in srgb, var(--brand-deep) 85%, transparent);
-    background: transparent;
-
-    &:first-child {
-      padding-left: 0;
-    }
-
-    &:not(:last-child)::after {
-      position: absolute;
-      top: 7px;
-      right: 0;
-      width: 1px;
-      height: 14px;
-      content: "";
-      background: color-mix(in srgb, var(--el-color-primary) 18%, transparent);
-    }
+    color: color-mix(in srgb, var(--brand-deep) 88%, transparent);
+    background: rgb(255 255 255 / 60%);
+    border: 1px solid color-mix(in srgb, var(--el-color-primary) 16%, transparent);
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
   }
 
-  &__feature-text {
-    line-height: 1;
-    white-space: nowrap;
+  &__feature-icon {
+    display: inline-flex;
+    font-size: 14px;
+    color: var(--el-color-primary);
   }
 }
 
@@ -1197,12 +1247,51 @@ $input-h: 44px;
   position: relative;
   z-index: 1;
   display: flex;
-  flex: 0 0 35%;
+  flex: 0 0 40%;
   flex-direction: column;
   align-items: center;
-  padding: 0 0 32px;
-  background: #fff;
+  justify-content: center;
+  padding: 48px 40px;
   animation: login-pane-in 0.36s ease-out 0.04s both;
+
+  /* 悬浮面板：承载表单与页脚，与品牌区形成层次 */
+  &__panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 460px;
+    padding: 44px 40px 24px;
+    background: #fff;
+    border: 1px solid color-mix(in srgb, var(--brand-deep) 8%, transparent);
+    border-radius: 24px;
+    box-shadow:
+      0 1px 2px color-mix(in srgb, var(--brand-deep) 5%, transparent),
+      0 24px 64px color-mix(in srgb, var(--brand-deep) 12%, transparent);
+  }
+
+  /* 窄屏下品牌区只保留 logo，这里补齐卡片内的品牌标识 */
+  &__mobile-brand {
+    display: none;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  &__mobile-logo {
+    box-sizing: border-box;
+    width: 38px;
+    height: 38px;
+    padding: 4px;
+    background: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--el-color-primary) 18%, transparent);
+    border-radius: 10px;
+  }
+
+  &__mobile-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: $text-primary;
+  }
 
   &__inner {
     box-sizing: border-box;
@@ -1211,8 +1300,7 @@ $input-h: 44px;
     flex-direction: column;
     justify-content: center;
     width: 100%;
-    max-width: 430px;
-    padding: 0 20px;
+    padding-bottom: 24px;
   }
 
   &__form {
@@ -1220,17 +1308,17 @@ $input-h: 44px;
   }
 
   &__title {
-    margin: 0 0 10px;
-    font-size: 28px;
+    margin: 0 0 8px;
+    font-size: 26px;
     font-weight: 750;
-    line-height: 1.1;
+    line-height: 1.2;
     color: $text-primary;
-    letter-spacing: 0;
   }
 
   &__desc {
-    margin: 10px 0 28px;
-    font-size: 15px;
+    margin: 0 0 28px;
+    font-size: 14px;
+    line-height: 1.6;
     color: $text-muted;
   }
 
@@ -1251,10 +1339,12 @@ $input-h: 44px;
     height: $input-h;
     overflow: hidden;
     cursor: pointer;
-    background: var(--el-fill-color-blank);
-    border: 1px solid var(--el-border-color);
-    border-radius: var(--el-border-radius-base);
-    transition: border-color 0.2s;
+    background: var(--el-fill-color-light);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    transition:
+      border-color 0.2s,
+      background-color 0.2s;
 
     &:hover {
       border-color: var(--el-color-primary);
@@ -1290,14 +1380,26 @@ $input-h: 44px;
 
   &__submit {
     width: 100%;
-    height: 44px;
+    height: 46px;
     font-size: 16px;
     font-weight: 600;
-    border-radius: 8px;
-    box-shadow: 0 12px 24px color-mix(in srgb, var(--el-color-primary) 18%, transparent);
+    background: linear-gradient(135deg, var(--el-color-primary), var(--brand-strong));
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--el-color-primary) 28%, transparent);
+    transition:
+      box-shadow 0.2s,
+      transform 0.2s,
+      filter 0.2s;
 
     &:hover {
-      box-shadow: 0 14px 28px color-mix(in srgb, var(--el-color-primary) 22%, transparent);
+      box-shadow: 0 14px 30px color-mix(in srgb, var(--el-color-primary) 34%, transparent);
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
     }
 
     &:focus,
@@ -1462,27 +1564,25 @@ $input-h: 44px;
       gap: 8px;
       align-items: center;
       justify-content: center;
-      height: 44px;
+      height: 42px;
       padding: 0;
       font-size: 14px;
       color: $text-secondary;
       cursor: pointer;
-      background: rgb(255 255 255 / 80%);
-      border: 1px solid color-mix(in srgb, var(--brand-deep) 10%, transparent);
-      border-radius: 8px;
-      box-shadow: 0 1px 2px color-mix(in srgb, var(--brand-deep) 6%, transparent);
-      backdrop-filter: blur(4px);
+      background: var(--el-fill-color-light);
+      border: 1px solid transparent;
+      border-radius: 12px;
       transition:
         color 0.2s,
-        background 0.2s,
+        background-color 0.2s,
         border-color 0.2s,
-        box-shadow 0.2s;
+        transform 0.2s;
 
       &:hover {
         color: var(--el-color-primary);
-        background: #fff;
+        background: var(--el-fill-color-blank);
         border-color: color-mix(in srgb, var(--el-color-primary) 35%, transparent);
-        box-shadow: 0 4px 12px color-mix(in srgb, var(--el-color-primary) 14%, transparent);
+        transform: translateY(-1px);
       }
     }
 
@@ -1494,36 +1594,77 @@ $input-h: 44px;
 }
 
 :deep(.el-form-item) {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 :deep(.el-input__wrapper) {
   height: $input-h;
+  background-color: var(--el-fill-color-light);
+  border-radius: 10px;
+  transition: background-color 0.2s;
+
+  &.is-focus {
+    background-color: var(--el-fill-color-blank);
+  }
 }
 
+/* 页脚横贯底部：版权语贴品牌区右缘，年份与域名贴登录区左缘，两段在中缝连成一行 */
 .login-footer {
-  flex-shrink: 0;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  padding-bottom: 22px;
   font-size: 12px;
-  color: $text-muted;
+  color: $text-secondary;
+
+  /* 两栏宽度与品牌区 / 登录区 60:40 对齐，中缝即两区分界 */
+  &__copy {
+    flex: 0 0 60%;
+    /* 中缝处只留一个词距，两段读起来像一句话 */
+    padding-right: 8px;
+    text-align: right;
+  }
+
+  &__year {
+    flex: 0 0 40%;
+    text-align: left;
+
+    a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.2s;
+
+      &:hover {
+        color: var(--el-color-primary);
+        text-decoration: underline;
+      }
+    }
+  }
 }
 
 .dark .login-page {
-  background: #0b1020;
+  background: radial-gradient(1200px 800px at 20% 0%, #101a33 0%, #0b1020 60%);
 }
 
 .dark .login-brand {
   // 深蓝渐变底（原 bg-dark.svg），暗色下不随主题色变化
   background: linear-gradient(135deg, #0f1a33 0%, #0c1428 55%, #0a1020 100%);
 
-  // 网格纹理（原 bg-dark.svg pattern）：白色细线 + 上浓下淡遮罩
+  // 网格纹理：白色细线 + 上浓下淡遮罩（覆盖浅色的右上光斑）
   &::before {
     position: absolute;
     inset: 0;
+    width: auto;
+    height: auto;
     content: "";
     background-image:
       linear-gradient(rgb(255 255 255 / 5%) 1px, transparent 1px),
       linear-gradient(90deg, rgb(255 255 255 / 5%) 1px, transparent 1px);
     background-size: 72px 72px;
+    border-radius: 0;
+    filter: none;
     mask-image: linear-gradient(
       to bottom,
       rgb(0 0 0 / 90%) 0%,
@@ -1532,9 +1673,15 @@ $input-h: 44px;
     );
   }
 
+  // 深色下左下光斑保留，换成主色低透明度
+  &::after {
+    background: color-mix(in srgb, var(--el-color-primary) 16%, transparent);
+  }
+
   &__logo {
     background: rgb(255 255 255 / 10%);
     border-color: rgb(255 255 255 / 20%);
+    box-shadow: none;
   }
 
   &__name {
@@ -1547,8 +1694,22 @@ $input-h: 44px;
     border-color: rgb(255 255 255 / 16%);
   }
 
+  &__eyebrow {
+    color: rgb(255 255 255 / 45%);
+  }
+
   &__title {
     color: #fff;
+
+    em {
+      background: linear-gradient(
+        120deg,
+        var(--el-color-primary-light-3),
+        var(--el-color-primary-light-5)
+      );
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
   }
 
   &__desc {
@@ -1557,22 +1718,35 @@ $input-h: 44px;
 
   &__feature {
     color: rgb(255 255 255 / 85%);
-
-    &:not(:last-child)::after {
-      background: rgb(255 255 255 / 18%);
-    }
+    background: rgb(255 255 255 / 6%);
+    border-color: rgb(255 255 255 / 14%);
   }
 }
 
 .dark .login-card {
-  background: #0b1020;
+  &__panel {
+    background: var(--el-bg-color-overlay);
+    border-color: rgb(255 255 255 / 8%);
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 40%),
+      0 24px 64px rgb(0 0 0 / 45%);
+  }
+
+  &__mobile-logo {
+    background: rgb(255 255 255 / 10%);
+    border-color: rgb(255 255 255 / 20%);
+  }
+
+  &__mobile-name {
+    color: rgb(255 255 255 / 88%);
+  }
 
   &__title {
-    color: rgb(255 255 255 / 85%);
+    color: rgb(255 255 255 / 88%);
   }
 
   &__desc {
-    color: rgb(255 255 255 / 30%);
+    color: rgb(255 255 255 / 35%);
   }
 
   &__demo-title {
@@ -1603,8 +1777,6 @@ $input-h: 44px;
   &__alt-btn {
     color: rgb(255 255 255 / 65%);
     background: rgb(255 255 255 / 6%);
-    border-color: rgb(255 255 255 / 12%);
-    box-shadow: none;
 
     &:hover {
       color: #fff;
@@ -1615,7 +1787,7 @@ $input-h: 44px;
 }
 
 .dark .login-footer {
-  color: rgb(255 255 255 / 15%);
+  color: rgb(255 255 255 / 40%);
 }
 
 .fade-slide-enter-active,
@@ -1651,34 +1823,51 @@ $input-h: 44px;
 
   .login-brand {
     flex: none;
-    height: auto;
     min-height: auto;
     padding: 28px 40px 32px;
     background: transparent;
+
+    /* 窄屏去掉光斑与网格，透出页面底色 */
+    &::before,
+    &::after {
+      display: none;
+    }
 
     &__hero {
       display: none;
     }
   }
 
-  /* 深色品牌区的渐变与网格纹理不适合窄屏，透出页面底色 */
-  .dark .login-brand {
-    background: none;
+  /* 卡片占满剩余宽度，面板内补齐品牌标识，页脚沉底 */
+  .login-card {
+    flex: 1;
+    align-items: center;
+    padding: 40px 24px 80px;
 
-    &::before {
-      display: none;
+    &__panel {
+      max-width: 460px;
+      padding: 36px 32px 20px;
+    }
+
+    &__mobile-brand {
+      display: flex;
     }
   }
 
-  /* 卡片占满剩余高度并透出页面渐变，inner 沿用全局的垂直居中，页脚沉底 */
-  .login-card {
-    flex: 1;
-    padding: 40px 48px 32px;
-    background: transparent;
-  }
+  /* 移动端上下两区没有中缝，页脚两段合并居中显示 */
+  .login-footer {
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+    padding-bottom: 16px;
+    text-align: center;
 
-  .dark .login-card {
-    background: transparent;
+    &__copy,
+    &__year {
+      flex: none;
+      padding: 0;
+      text-align: center;
+    }
   }
 }
 
@@ -1705,11 +1894,11 @@ $input-h: 44px;
   }
 
   .login-card {
-    padding: 32px 24px 24px;
+    padding: 28px 16px 24px;
 
-    &__inner {
-      width: 100%;
-      padding: 0;
+    &__panel {
+      padding: 28px 20px 16px;
+      border-radius: 20px;
     }
   }
 }
