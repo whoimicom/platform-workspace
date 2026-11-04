@@ -56,15 +56,13 @@ app:
       app-secret: ${WECHAT_OPEN_APP_SECRET:}
       # 授权回调域（前端需要传这个 code 回来）                    WECHAT_OPEN_REDIRECT_URI
       redirect-uri: ${WECHAT_OPEN_REDIRECT_URI:}
-    wecom:
-      # 企业微信 CorpID                                         WECOM_CORP_ID
-      corp-id: ${WECOM_CORP_ID:}
-      # 自建应用 AgentId                                        WECOM_AGENT_ID
-      agent-id: ${WECOM_AGENT_ID:}
-      # 应用 Secret                                             WECOM_APP_SECRET
-      app-secret: ${WECOM_APP_SECRET:}
-      # 授权回调地址（前端登录页完整 URL，需与企业微信可信域名一致） WECOM_REDIRECT_URI
-      redirect-uri: ${WECOM_REDIRECT_URI:}
+    qq:
+      # QQ 互联 - 网站应用 AppID                                QQ_APP_ID
+      app-id: ${QQ_APP_ID:}
+      # 应用密钥 AppKey                                          QQ_APP_SECRET
+      app-secret: ${QQ_APP_SECRET:}
+      # 授权回调地址（需与 QQ 互联后台登记的回调地址一致）          QQ_REDIRECT_URI
+      redirect-uri: ${QQ_REDIRECT_URI:}
   # 接口访问日志（请求/返回报文、耗时、traceId 异步输出）
   access-log:
     # 接口访问日志总开关

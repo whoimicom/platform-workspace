@@ -12,8 +12,8 @@ USE platform;
 CREATE TABLE IF NOT EXISTS sys_user_identity (
     id              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     user_id         BIGINT       NOT NULL COMMENT '绑定的系统用户ID',
-    provider        VARCHAR(32)  NOT NULL COMMENT '提供者: WECHAT / WECOM',
-    app_id          VARCHAR(128) DEFAULT NULL COMMENT '应用/企业 appid',
+    provider        VARCHAR(32)  NOT NULL COMMENT '提供者: WECHAT / QQ',
+    app_id          VARCHAR(128) DEFAULT NULL COMMENT '应用 appid',
     union_id        VARCHAR(128) DEFAULT NULL COMMENT '同一开发者主体下跨应用唯一标识',
     open_id         VARCHAR(128) NOT NULL COMMENT '应用内唯一标识',
     nickname        VARCHAR(64)  DEFAULT NULL COMMENT '三方昵称(冗余快照)',

@@ -54,11 +54,11 @@ export interface SmsLoginRequest {
 
 // ---- 三方登录 ----
 
-export type OauthProvider = "WECHAT" | "WECOM";
+export type OauthProvider = "WECHAT" | "QQ";
 
 export interface OauthLoginQuery {
   provider: OauthProvider;
-  /** 应用/企业 appId，可空 */
+  /** 应用 appId，可空 */
   appId?: string;
   /** 前端拿到的授权 code */
   code: string;
@@ -66,7 +66,7 @@ export interface OauthLoginQuery {
 
 /** 三方授权页地址 */
 export interface OauthAuthorizeUrl {
-  /** 需打开的授权页 URL（微信扫码 / 企业微信授权） */
+  /** 需打开的授权页 URL（微信扫码 / QQ 授权） */
   url: string;
   /** 防 CSRF 的 state，回调时需原样带回并校验 */
   state: string;
@@ -74,10 +74,8 @@ export interface OauthAuthorizeUrl {
 
 /** 前端内嵌二维码所需的公开配置（不含 secret） */
 export interface OauthProviderConfig {
-  /** 微信为开放平台 AppID；企业微信为 CorpID */
+  /** 微信为开放平台 AppID；QQ 为 QQ 互联 AppID */
   appId: string;
-  /** 仅企业微信使用 */
-  agentId?: string;
   /** 授权回调地址（内嵌二维码时传给 SDK） */
   redirectUri: string;
   /** 是否已完成配置 */
@@ -86,7 +84,7 @@ export interface OauthProviderConfig {
 
 export interface OauthClientConfig {
   wechat: OauthProviderConfig;
-  wecom: OauthProviderConfig;
+  qq: OauthProviderConfig;
 }
 
 /**

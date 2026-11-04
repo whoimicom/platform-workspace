@@ -132,9 +132,9 @@
                     <span class="i-svg:user login-card__alt-icon" />
                     微信
                   </button>
-                  <button class="login-card__alt-btn" type="button" @click="handleOauthLogin('WECOM')">
+                  <button class="login-card__alt-btn" type="button" @click="handleOauthLogin('QQ')">
                     <span class="i-svg:user login-card__alt-icon" />
-                    企业微信
+                    QQ
                   </button>
                   <button class="login-card__alt-btn" type="button" @click="switchToSmsLogin">
                     <span class="i-svg:user login-card__alt-icon" />
@@ -310,17 +310,24 @@
                 </div>
               </template>
 
-              <!-- 三方扫码登录（内嵌二维码，不跳转页面） -->
+              <!-- 三类扫码登录（内嵌二维码，不跳转页面；QQ 走授权窗口） -->
               <template v-else-if="loginMode === 'qrcode'">
                 <h2 class="login-card__title login-card__qrcode-title">
-                  {{ qrcodeProvider === "WECHAT" ? "微信扫码登录" : "企业微信扫码登录" }}
+                  {{ qrcodeProvider ? providerLabelMap[qrcodeProvider] : "" }}扫码登录
                 </h2>
                 <p class="login-card__desc login-card__qrcode-desc">
-                  请使用{{ qrcodeProvider === "WECHAT" ? "微信" : "企业微信" }}扫描下方二维码，并在手机上确认登录
+                  请使用{{ qrcodeProvider ? providerLabelMap[qrcodeProvider] : "" }}扫描下方二维码，并在手机上确认登录
                 </p>
 
                 <div class="login-card__qrcode">
-                  <div :id="QRCODE_CONTAINER_ID" class="login-card__qrcode-inner"></div>
+                  <div
+                    :id="QRCODE_CONTAINER_ID"
+                    class="login-card__qrcode-inner"
+                    :class="{
+                      'login-card__qrcode-inner--wechat': qrcodeProvider === 'WECHAT',
+                      'login-card__qrcode-inner--qq': qrcodeProvider === 'QQ',
+                    }"
+                  ></div>
                   <div v-if="qrcodeLoading" class="login-card__qrcode-mask">
                     <el-icon class="is-loading"><Loading /></el-icon>
                   </div>
@@ -436,7 +443,7 @@ const smsLoginRules = {
 
 const providerLabelMap: Record<OauthProvider, string> = {
   WECHAT: "微信",
-  WECOM: "企业微信",
+  QQ: "QQ",
 };
 
 /**
@@ -513,7 +520,7 @@ function showForm(type: "resetPwd") {
   component.value = type;
 }
 
-// ---- 三方登录（微信 / 企业微信，登录卡片内嵌二维码）----
+// ---- 三方登录（微信 / QQ，登录卡片内嵌二维码或授权窗口）----
 
 const OAUTH_PROVIDER_KEY = "oauth_provider";
 const OAUTH_STATE_KEY = "oauth_state";
@@ -523,8 +530,15 @@ const qrcodeProvider = ref<OauthProvider | "">("");
 const qrcodeLoading = ref(false);
 const qrcodeError = ref("");
 
+/** QQ JSSDK 实例（销毁后才能再次 init） */
+let qqLoginInstance: QqLoginInstance | null = null;
+
 /** 清空二维码容器，避免切换 provider 时残留上一个 iframe */
 function clearQrcode() {
+  if (qqLoginInstance) {
+    qqLoginInstance.destroy();
+    qqLoginInstance = null;
+  }
   const container = document.getElementById(QRCODE_CONTAINER_ID);
   if (container) container.innerHTML = "";
 }
@@ -542,6 +556,28 @@ function generateState() {
 
 /** 官方扫码 SDK 的构造函数签名 */
 type QrSdkCtor = new (options: Record<string, unknown>) => unknown;
+
+/** QQLogin JSSDK（https://wiki.connect.qq.com/qq-login-cdn/） */
+interface QqLoginInstance {
+  show(): void;
+  hide(): void;
+  destroy(): void;
+  isVisible(): boolean;
+}
+
+interface QqLoginStatic {
+  init(config: {
+    appid: string;
+    redirect_uri: string;
+    element: HTMLElement | string;
+    onMessage: (event: string, payload: unknown) => void;
+    state?: string;
+    response_type?: "code" | "token";
+    redirect_type?: "parent" | "self";
+    color_theme?: "light" | "dark" | "auto";
+    lang?: string;
+  }): QqLoginInstance;
+}
 
 /** 动态加载官方 SDK（幂等） */
 function loadSdk(src: string, sdkKey: string): Promise<void> {
@@ -562,8 +598,8 @@ function loadSdk(src: string, sdkKey: string): Promise<void> {
 }
 
 /**
- * 点击微信 / 企业微信：在登录卡片内渲染官方二维码，不跳转页面。
- * 扫码确认后，官方 iframe 会跳到中转页，中转页通过 postMessage 把 code 传回本页。
+ * 点击微信 / QQ：在登录卡片内渲染官方扫码组件，不跳转页面。
+ * 扫码确认后，组件内部跳到中转页，中转页通过 postMessage 把 code 传回本页。
  */
 async function handleOauthLogin(provider: OauthProvider) {
   qrcodeError.value = "";
@@ -578,12 +614,12 @@ async function handleOauthLogin(provider: OauthProvider) {
 
   try {
     const config = await AuthAPI.getOauthClientConfig();
-    const providerConfig = provider === "WECHAT" ? config.wechat : config.wecom;
+    const providerConfig = provider === "WECHAT" ? config.wechat : config.qq;
     if (!providerConfig.enabled || !providerConfig.redirectUri) {
       throw new Error(
         provider === "WECHAT"
           ? "微信登录未配置：请设置 WECHAT_OPEN_APPID / WECHAT_OPEN_APP_SECRET / WECHAT_OPEN_REDIRECT_URI"
-          : "企业微信登录未配置：请设置 WECOM_CORP_ID / WECOM_APP_SECRET / WECOM_REDIRECT_URI"
+          : "QQ 登录未配置：请设置 QQ_APP_ID / QQ_APP_SECRET / QQ_REDIRECT_URI"
       );
     }
 
@@ -605,21 +641,27 @@ async function handleOauthLogin(provider: OauthProvider) {
         login_type: "jssdk",
       });
     } else {
-      await loadSdk(
-        "https://wwcdn.weixin.qq.com/node/wwl/20240119170700/wwLogin-1.3.0.js",
-        "wwLogin"
-      );
-      const WwLoginCtor = (window as unknown as Record<string, QrSdkCtor | undefined>).WwLogin;
-      if (!WwLoginCtor) throw new Error("企业微信扫码组件加载失败");
-      new WwLoginCtor({
-        id: QRCODE_CONTAINER_ID,
+      await loadSdk("https://res.connect.qq.com/jssdk/index.js", "qqLogin");
+      const QQLogin = (window as unknown as Record<string, QqLoginStatic | undefined>).QQLogin;
+      if (!QQLogin) throw new Error("QQ 登录组件加载失败");
+      // redirect_type=self：组件内部跳转到中转页，由中转页 postMessage 回传 code
+      qqLoginInstance = QQLogin.init({
         appid: providerConfig.appId,
-        agentid: providerConfig.agentId,
-        redirect_uri: encodeURIComponent(providerConfig.redirectUri),
+        redirect_uri: providerConfig.redirectUri,
+        element: `#${QRCODE_CONTAINER_ID}`,
         state,
-        lang: "zh",
-        href: "",
+        redirect_type: "self",
+        onMessage: (event, payload) => {
+          if (event === "app:page_loaded" || event === "app:page_ready") {
+            qqLoginInstance?.show();
+          }
+          if (event === "app:page_error") {
+            const reason = (payload as { reason?: string } | null)?.reason;
+            qrcodeError.value = `QQ 登录组件加载失败${reason ? `（${reason}）` : ""}，请稍后重试`;
+          }
+        },
       });
+      qqLoginInstance.show();
     }
   } catch (error) {
     qrcodeError.value = error instanceof Error ? error.message : "二维码加载失败";
@@ -1249,6 +1291,20 @@ $input-h: 44px;
     }
   }
 
+  /*
+   * QQLogin JSSDK 会按容器尺寸自适应：宽高低于 280px 会出现内部滚动条，
+   * 因此给 QQ 容器明确尺寸，并让 iframe 填满容器。
+   */
+  &__qrcode-inner--qq {
+    width: 300px;
+    height: 400px;
+
+    :deep(iframe) {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
   &__qrcode-mask {
     position: absolute;
     inset: 0;
@@ -1269,14 +1325,25 @@ $input-h: 44px;
 
   /* 视口高度不足时整体缩小官方面板，避免整页出现滚动条 */
   @media (max-height: 820px) {
-    &__qrcode-inner :deep(iframe) {
+    &__qrcode-inner--wechat :deep(iframe) {
       zoom: 0.85;
+    }
+
+    /* QQ 不缩放而直接缩小容器，避免 SDK 因容器过小改成紧凑布局 */
+    &__qrcode-inner--qq {
+      width: 290px;
+      height: 350px;
     }
   }
 
   @media (max-height: 700px) {
-    &__qrcode-inner :deep(iframe) {
+    &__qrcode-inner--wechat :deep(iframe) {
       zoom: 0.7;
+    }
+
+    &__qrcode-inner--qq {
+      width: 280px;
+      height: 300px;
     }
   }
 

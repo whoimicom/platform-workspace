@@ -22,7 +22,7 @@ public final class AuthDtos {
 
     /** 三方身份（mock 下由 code 直接映射而来） */
     public record OauthIdentity(
-            String provider,   // WECHAT / WECOM
+            String provider,   // WECHAT / QQ
             String appId,      // 可空
             String unionId,    // 可空
             String openId,
@@ -64,15 +64,14 @@ public final class AuthDtos {
      */
     public record OauthClientConfig(
             ProviderConfig wechat,
-            ProviderConfig wecom
+            ProviderConfig qq
     ) {
         /**
-         * @param appId       微信为开放平台 AppID；企业微信为 CorpID
-         * @param agentId     仅企业微信使用
+         * @param appId       微信为开放平台 AppID；QQ 为 QQ 互联 AppID
          * @param redirectUri 授权回调地址（前端内嵌二维码时传给 SDK）
          * @param enabled     是否已完成配置，可用于前端判断是否展示入口
          */
-        public record ProviderConfig(String appId, String agentId, String redirectUri, boolean enabled) {
+        public record ProviderConfig(String appId, String redirectUri, boolean enabled) {
         }
     }
 

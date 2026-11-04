@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 三方身份绑定（不写入 sys_user 表，独立管理）。
  * <p>
- * provider 取值：WECHAT / WECOM，可扩展钉钉、飞书等。
+ * provider 取值：WECHAT / QQ，可扩展钉钉、飞书等。
  */
 @Table("sys_user_identity")
 public class SysUserIdentity {

@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * <ul>
  *   <li>{@link CaptchaProperties} — app.captcha 图形验证码签名配置（含 enabled 开关）</li>
  *   <li>{@link JwtProperties}     — app.jwt      JWT 令牌签名配置</li>
- *   <li>{@link OAuthProperties}   — app.oauth    三方登录（微信/企业微信）配置</li>
+ *   <li>{@link OAuthProperties}   — app.oauth    三方登录（微信/QQ）配置</li>
  * </ul>
  */
 @ConfigurationProperties(prefix = "app")

@@ -25,23 +25,24 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 三方登录（微信开放平台 / 企业微信）流程。
+ * 三方登录（微信开放平台 / QQ 互联）流程。
  * <p>
  * 绑定规则：
  * <ol>
- *   <li>前端扫码 → 三方回调带 code → 调 /oauth/login(provider, code)</li>
+ *   <li>前端扫码/授权 → 三方回调带 code → 调 /oauth/login(provider, code)</li>
  *   <li>code 换 openId → 查 sys_user_identity(provider, openId)</li>
  *   <li>已绑定 → 直接签发 token；未绑定 → 返回 needBind + bindToken</li>
- *   <li>前端弹窗要手机号+短信验证码 → /oauth/bind → 写 identity → 签发 token</li>
+ *   <li>前端切换到绑定模式要手机号+短信验证码 → /oauth/bind → 写 identity → 签发 token</li>
  *   <li>绑定时手机号不存在 → 提示"用户不存在，请联系管理员"，不自动创建</li>
  *   <li>绑定时手机号已被其他 openId 绑定 → 替换为当前 openId</li>
  * </ol>
  * <p>
- * 真实调用微信/企业微信 openId 接口：
+ * 真实调用三方 openId 接口：
  * <ul>
  *   <li>微信开放平台：GET https://api.weixin.qq.com/sns/oauth2/access_token?appid=xxx&secret=xxx&code=xxx&grant_type=authorization_code → openid / unionid</li>
- *   <li>企业微信：先 GET https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=xxx&corpsecret=xxx → access_token；
- *       再 GET https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token=xxx&code=xxx → open_userid / userid</li>
+ *   <li>QQ 互联：GET https://graph.qq.com/oauth2.0/token → access_token；
+ *       GET https://graph.qq.com/oauth2.0/me → openid；
+ *       GET https://graph.qq.com/user/get_user_info → 昵称 / 头像</li>
  * </ul>
  * 未配置 appId/appSecret 时 exchangeOpenId 自动退化为 mock（以 code 作为 openId）。
  */
@@ -73,9 +74,7 @@ public class OAuthService {
         this.smsCodeService = smsCodeService;
         this.oauthProperties = oauthProperties;
         this.jsonMapper = jsonMapper;
-        this.restClient = RestClient.builder()
-                .baseUrl("https://api.weixin.qq.com")
-                .build();
+        this.restClient = RestClient.builder().build();
     }
 
     // ---- 三方登录入口 ----
@@ -83,8 +82,8 @@ public class OAuthService {
     /**
      * 三方 code 换登录态。
      *
-     * @param provider WECHAT / WECOM
-     * @param appId    应用/企业 appId（可空，留空则从配置文件读取）
+     * @param provider WECHAT / QQ
+     * @param appId    应用 appId（可空，留空则从配置文件读取）
      * @param code     前端拿到的授权 code
      */
     public AuthDtos.OauthLoginResult oauthLogin(String provider, String appId, String code) {
@@ -172,7 +171,7 @@ public class OAuthService {
     }
 
     private static boolean isSupportedProvider(String provider) {
-        return "WECHAT".equalsIgnoreCase(provider) || "WECOM".equalsIgnoreCase(provider);
+        return "WECHAT".equalsIgnoreCase(provider) || "QQ".equalsIgnoreCase(provider);
     }
 
     // ---- 授权页地址（前端跳转扫码 / 授权）----
@@ -182,19 +181,19 @@ public class OAuthService {
      */
     public AuthDtos.OauthClientConfig clientConfig() {
         OAuthProperties.WeChat wechat = oauthProperties.getWechat();
-        OAuthProperties.WeCom wecom = oauthProperties.getWecom();
+        OAuthProperties.Qq qq = oauthProperties.getQq();
         return new AuthDtos.OauthClientConfig(
                 new AuthDtos.OauthClientConfig.ProviderConfig(
-                        wechat.getAppId(), null, wechat.getRedirectUri(),
+                        wechat.getAppId(), wechat.getRedirectUri(),
                         wechat.isEnabled() && !isBlank(wechat.getRedirectUri())),
                 new AuthDtos.OauthClientConfig.ProviderConfig(
-                        wecom.getCorpId(), wecom.getAgentId(), wecom.getRedirectUri(),
-                        wecom.isEnabled() && !isBlank(wecom.getRedirectUri()))
+                        qq.getAppId(), qq.getRedirectUri(),
+                        qq.isEnabled() && !isBlank(qq.getRedirectUri()))
         );
     }
 
     /**
-     * 构建三方授权页 URL。redirect_uri 直接取配置值，必须与微信/企业微信后台登记的域名完全一致。
+     * 构建三方授权页 URL。redirect_uri 直接取配置值，必须与微信 / QQ 互联后台登记的地址完全一致。
      */
     public AuthDtos.OauthAuthorizeUrl buildAuthorizeUrl(String provider) {
         String state = UUID.randomUUID().toString().replace("-", "");
@@ -214,47 +213,48 @@ public class OAuthService {
             log.info("微信扫码授权 URL: {}", url);
             return new AuthDtos.OauthAuthorizeUrl(url, state);
         }
-        if ("WECOM".equalsIgnoreCase(provider)) {
-            OAuthProperties.WeCom cfg = oauthProperties.getWecom();
+        if ("QQ".equalsIgnoreCase(provider)) {
+            OAuthProperties.Qq cfg = oauthProperties.getQq();
             if (!cfg.isEnabled() || isBlank(cfg.getRedirectUri())) {
                 throw BusinessException.badRequest(
-                        "企业微信登录未配置：请设置环境变量 WECOM_CORP_ID / WECOM_APP_SECRET / WECOM_REDIRECT_URI");
+                        "QQ 登录未配置：请设置环境变量 QQ_APP_ID / QQ_APP_SECRET / QQ_REDIRECT_URI");
             }
-            String url = "https://open.weixin.qq.com/connect/oauth2/authorize"
-                    + "?appid=" + cfg.getCorpId()
+            validateRedirectUri(cfg.getRedirectUri());
+            String url = "https://graph.qq.com/oauth2.0/authorize"
+                    + "?response_type=code"
+                    + "&client_id=" + cfg.getAppId()
                     + "&redirect_uri=" + URLEncoder.encode(cfg.getRedirectUri(), StandardCharsets.UTF_8)
-                    + "&response_type=code&scope=snsapi_base"
-                    + (isBlank(cfg.getAgentId()) ? "" : "&agentid=" + cfg.getAgentId())
                     + "&state=" + state
-                    + "#wechat_redirect";
+                    + "&scope=get_user_info";
+            log.info("QQ 授权 URL: {}", url);
             return new AuthDtos.OauthAuthorizeUrl(url, state);
         }
         throw BusinessException.badRequest("暂不支持的登录方式：" + provider);
     }
 
     /**
-     * 校验 redirect_uri 合法性，提前给出可读提示（微信侧只会返回"redirect_uri 参数错误"）。
+     * 校验 redirect_uri 合法性，提前给出可读提示（三方平台只会返回"redirect_uri 参数错误"）。
      */
     private void validateRedirectUri(String uri) {
         if (uri.contains("#")) {
             throw BusinessException.badRequest(
-                    "redirect_uri 不能包含 #（前端为 hash 路由，微信会报\"redirect_uri 参数错误\"）。"
+                    "redirect_uri 不能包含 #（前端为 hash 路由，三方平台会报\"redirect_uri 参数错误\"）。"
                             + "请改为静态中转页，例如 https://你的域名/platform-web/oauth-callback.html");
         }
         if (uri.contains("localhost") || uri.contains("127.0.0.1")) {
             throw BusinessException.badRequest(
-                    "redirect_uri 不能使用 localhost/127.0.0.1，微信开放平台要求使用已备案域名（80/443 端口）");
+                    "redirect_uri 不能使用 localhost/127.0.0.1，三方平台要求使用已备案域名（80/443 端口）");
         }
     }
 
-    // ---- code → openId（真实调用微信 / 企业微信 API，未配置则退化为 mock）----
+    // ---- code → openId（真实调用微信 / QQ 接口，未配置则退化为 mock）----
 
     protected AuthDtos.OauthIdentity exchangeOpenId(String provider, String appId, String code) {
         if ("WECHAT".equalsIgnoreCase(provider)) {
             return exchangeWechatOpenId(appId, code);
         }
-        if ("WECOM".equalsIgnoreCase(provider)) {
-            return exchangeWecomOpenId(code);
+        if ("QQ".equalsIgnoreCase(provider)) {
+            return exchangeQqOpenId(code);
         }
         throw BusinessException.badRequest("暂不支持的登录方式：" + provider);
     }
@@ -304,65 +304,80 @@ public class OAuthService {
         }
     }
 
-    private AuthDtos.OauthIdentity exchangeWecomOpenId(String code) {
-        OAuthProperties.WeCom cfg = oauthProperties.getWecom();
+    private AuthDtos.OauthIdentity exchangeQqOpenId(String code) {
+        OAuthProperties.Qq cfg = oauthProperties.getQq();
         if (!cfg.isEnabled()) {
-            log.warn("[MOCK] 企业微信未配置 WECOM_CORP_ID / WECOM_APP_SECRET，" +
+            log.warn("[MOCK] QQ 互联未配置 QQ_APP_ID / QQ_APP_SECRET，" +
                     "exchangeOpenId 退化为 mock。请在环境变量中设置后重启。");
-            return mockIdentity("WECOM", code);
+            return mockIdentity("QQ", code);
         }
 
         try {
-            // 1) 获取企业 access_token
-            String tokenUrl = "https://qyapi.weixin.qq.com/cgi-bin/gettoken"
-                    + "?corpid=" + cfg.getCorpId()
-                    + "&corpsecret=" + cfg.getAppSecret();
+            // 1) code → access_token（fmt=json 让 QQ 返回 JSON 而不是 a=b&c=d 文本）
+            String tokenUrl = "https://graph.qq.com/oauth2.0/token"
+                    + "?grant_type=authorization_code"
+                    + "&client_id=" + cfg.getAppId()
+                    + "&client_secret=" + cfg.getAppSecret()
+                    + "&code=" + code
+                    + "&redirect_uri=" + URLEncoder.encode(cfg.getRedirectUri(), StandardCharsets.UTF_8)
+                    + "&fmt=json";
             JsonNode tokenJson = jsonMapper.readTree(
                     restClient.get().uri(tokenUrl).retrieve().body(String.class));
-            if (!tokenJson.path("errcode").asText("0").equals("0")) {
-                log.warn("企业微信 gettoken 失败: {}", tokenJson);
-                throw BusinessException.badRequest("企业微信授权配置错误，请联系管理员");
-            }
-            String accessToken = tokenJson.path("access_token").asText();
-
-            // 2) code 换 userid/open_userid
-            // 扫码登录（wwlogin）的 code 走 auth/getuserinfo；网页授权的 code 走 user/getuserinfo，先试前者再兜底
-            JsonNode userJson = wecomGetUserInfo(accessToken, code, "auth");
-            if (!userJson.path("errcode").asText("0").equals("0")) {
-                userJson = wecomGetUserInfo(accessToken, code, "user");
-            }
-            if (!userJson.path("errcode").asText("0").equals("0")) {
-                log.warn("企业微信 getuserinfo 失败: {}", userJson);
+            if (tokenJson.has("error")) {
+                log.warn("QQ 换取 access_token 失败: {}", tokenJson);
                 throw BusinessException.badRequest("授权 code 无效或已过期，请重新授权");
             }
-
-            // 企业微信返回 open_userid（外部联系人 openid 类似概念）/ userid（企业内部员工ID）
-            String openUserId = userJson.path("open_userid").asText(null);
-            String userId = userJson.path("userid").asText(null);
-            // 优先用 open_userid（更稳定，userid 可能因权限获取不到）
-            String openId = openUserId != null && !openUserId.isBlank() ? openUserId : userId;
-            if (openId == null || openId.isBlank()) {
-                throw BusinessException.badRequest("企业微信返回数据异常，请稍后重试");
+            String accessToken = tokenJson.path("access_token").asText(null);
+            if (isBlank(accessToken)) {
+                log.warn("QQ 返回缺少 access_token: {}", tokenJson);
+                throw BusinessException.badRequest("QQ 返回数据异常，请稍后重试");
             }
 
-            log.info("企业微信 code → openId={}, userId={}", openId, userId);
-            return new AuthDtos.OauthIdentity("WECOM", cfg.getCorpId(), null, openId, null, null);
+            // 2) access_token → openid
+            String meUrl = "https://graph.qq.com/oauth2.0/me"
+                    + "?access_token=" + accessToken
+                    + "&fmt=json";
+            JsonNode meJson = jsonMapper.readTree(
+                    restClient.get().uri(meUrl).retrieve().body(String.class));
+            if (meJson.has("error")) {
+                log.warn("QQ 获取 openid 失败: {}", meJson);
+                throw BusinessException.badRequest("授权 code 无效或已过期，请重新授权");
+            }
+            String openId = meJson.path("openid").asText(null);
+            if (isBlank(openId)) {
+                log.warn("QQ 返回缺少 openid: {}", meJson);
+                throw BusinessException.badRequest("QQ 返回数据异常，请稍后重试");
+            }
+
+            // 3) 昵称/头像（可选信息，失败不影响登录）
+            String nickname = null;
+            String avatar = null;
+            try {
+                String userUrl = "https://graph.qq.com/user/get_user_info"
+                        + "?access_token=" + accessToken
+                        + "&oauth_consumer_key=" + cfg.getAppId()
+                        + "&openid=" + openId
+                        + "&fmt=json";
+                JsonNode userJson = jsonMapper.readTree(
+                        restClient.get().uri(userUrl).retrieve().body(String.class));
+                if (userJson.path("ret").asInt(-1) == 0) {
+                    nickname = userJson.path("nickname").asText(null);
+                    avatar = userJson.path("figureurl_qq_2").asText(null);
+                } else {
+                    log.warn("QQ 获取用户信息失败（不影响登录）: {}", userJson);
+                }
+            } catch (Exception ex) {
+                log.warn("QQ 获取用户信息异常（不影响登录）: {}", ex.getMessage());
+            }
+
+            log.info("QQ code → openId={}, nickname={}", openId, nickname);
+            return new AuthDtos.OauthIdentity("QQ", cfg.getAppId(), null, openId, nickname, avatar);
         } catch (BusinessException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.error("企业微信换取 openId 异常", ex);
-            throw BusinessException.badRequest("企业微信授权服务异常，请稍后重试");
+            log.error("QQ 换取 openId 异常", ex);
+            throw BusinessException.badRequest("QQ 授权服务异常，请稍后重试");
         }
-    }
-
-    /**
-     * 企业微信 code 换用户信息。kind=auth 用于扫码登录，kind=user 用于网页授权。
-     */
-    private JsonNode wecomGetUserInfo(String accessToken, String code, String kind) {
-        String url = "https://qyapi.weixin.qq.com/cgi-bin/" + kind + "/getuserinfo"
-                + "?access_token=" + accessToken
-                + "&code=" + code;
-        return jsonMapper.readTree(restClient.get().uri(url).retrieve().body(String.class));
     }
 
     private AuthDtos.OauthIdentity mockIdentity(String provider, String code) {
