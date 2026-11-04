@@ -59,7 +59,7 @@
               <!-- 账号密码登录 -->
               <template v-if="loginMode === 'password'">
               <h2 class="login-card__title">欢迎回来</h2>
-              <p class="login-card__desc">登录你的账号，继续今天的工作</p>
+              <p class="login-card__desc">输入账号与密码，进入你的专属工作台</p>
 
               <el-form
                 ref="loginFormRef"
@@ -1614,10 +1614,13 @@ $input-h: 44px;
   right: 0;
   bottom: 0;
   left: 0;
+  z-index: 2;
   display: flex;
   padding-bottom: 22px;
   font-size: 12px;
   color: $text-secondary;
+  /* 页脚横贯两区，仅让链接响应点击，不遮挡下方元素 */
+  pointer-events: none;
 
   /* 两栏宽度与品牌区 / 登录区 60:40 对齐，中缝即两区分界 */
   &__copy {
@@ -1634,6 +1637,7 @@ $input-h: 44px;
     a {
       color: inherit;
       text-decoration: none;
+      pointer-events: auto;
       transition: color 0.2s;
 
       &:hover {
@@ -1649,8 +1653,19 @@ $input-h: 44px;
 }
 
 .dark .login-brand {
-  // 深蓝渐变底（原 bg-dark.svg），暗色下不随主题色变化
-  background: linear-gradient(135deg, #0f1a33 0%, #0c1428 55%, #0a1020 100%);
+  // 深空底色：右上 / 左下两团主题色光晕叠加线性渐变，替代单一线性渐变
+  background:
+    radial-gradient(
+      880px 620px at 82% 10%,
+      color-mix(in srgb, var(--el-color-primary) 20%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      720px 560px at 12% 88%,
+      color-mix(in srgb, var(--el-color-primary) 14%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(160deg, #101b36 0%, #0b1226 48%, #070c18 100%);
 
   // 网格纹理：白色细线 + 上浓下淡遮罩（覆盖浅色的右上光斑）
   &::before {
@@ -1673,9 +1688,15 @@ $input-h: 44px;
     );
   }
 
-  // 深色下左下光斑保留，换成主色低透明度
+  // 右侧一团紫罗兰色柔光，与主题色光晕形成冷暖对比
   &::after {
-    background: color-mix(in srgb, var(--el-color-primary) 16%, transparent);
+    top: 22%;
+    right: -100px;
+    bottom: auto;
+    left: auto;
+    width: 380px;
+    height: 380px;
+    background: color-mix(in srgb, #7c6af2 18%, transparent);
   }
 
   &__logo {
