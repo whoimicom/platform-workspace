@@ -323,6 +323,7 @@
                   <div
                     :id="QRCODE_CONTAINER_ID"
                     class="login-card__qrcode-inner"
+                    :class="{ 'login-card__qrcode-inner--wechat': qrcodeProvider === 'WECHAT' }"
                   ></div>
                   <div v-if="qrcodeLoading" class="login-card__qrcode-mask">
                     <el-icon class="is-loading"><Loading /></el-icon>
@@ -360,13 +361,14 @@ import { Lock, Loading, Phone, Refresh, User } from "@element-plus/icons-vue";
 import AuthAPI from "@/api/auth";
 import type { LoginRequest, OauthProvider } from "@/api/auth";
 import router from "@/router";
-import { useUserStore } from "@/stores";
+import { useSettingsStore, useUserStore } from "@/stores";
 import { AuthStorage } from "@/utils/auth";
 import { appConfig } from "@/settings";
 import ResetPwd from "./components/ResetPwd.vue";
 import logo from "@/assets/images/logo.svg";
 
 const userStore = useUserStore();
+const settingsStore = useSettingsStore();
 const route = useRoute();
 const component = ref<"login" | "resetPwd">("login");
 
@@ -526,11 +528,24 @@ const qrcodeProvider = ref<OauthProvider | "">("");
 const qrcodeLoading = ref(false);
 const qrcodeError = ref("");
 
+/** 当前二维码的微信配置，主题切换时用它重建 iframe */
+interface WechatQrcodeConfig {
+  appId: string;
+  redirectUri: string;
+  state: string;
+}
+let wechatQrcodeConfig: WechatQrcodeConfig | null = null;
+/** wxLogin.js 会在 options 上挂 onCleanup，用于移除它注册的 message 监听 */
+let wechatSdkCleanup: (() => void) | null = null;
+
 /** QQ JSSDK 实例（销毁后才能再次 init） */
 let qqLoginInstance: QqLoginInstance | null = null;
 
 /** 清空二维码容器，避免切换 provider 时残留上一个 iframe */
 function clearQrcode() {
+  wechatSdkCleanup?.();
+  wechatSdkCleanup = null;
+  wechatQrcodeConfig = null;
   if (qqLoginInstance) {
     qqLoginInstance.destroy();
     qqLoginInstance = null;
@@ -594,6 +609,63 @@ function loadSdk(src: string, sdkKey: string): Promise<void> {
 }
 
 /**
+ * 官方内嵌页内容默认顶部对齐，快捷登录面板比扫码面板矮很多，
+ * 在预留的 300×450 容器里会显得整体偏上。通过官方 href 参数注入一段
+ * 垂直居中样式；stylelite=1 时 href 会失效，因此保持旧版内嵌 UI。
+ */
+function buildWechatQrcodeHref() {
+  const css = [
+    "html,body{height:100%;}",
+    "#tpl_for_iframe{position:absolute;top:50%;left:0;width:100%;transform:translateY(-50%);}",
+  ].join("");
+  // wxLogin.js 把 href 原样拼进 iframe URL，官方页面取参时会把 "+" 还原为空格，
+  // 因此整个 data URI 需要 URL 编码，避免 base64 中的 "+" 被破坏。
+  return encodeURIComponent(`data:text/css;base64,${window.btoa(css)}`);
+}
+
+/** 渲染（或主题变化后重绘）微信二维码 iframe */
+function renderWechatQrcode(config: WechatQrcodeConfig) {
+  const WxLoginCtor = (window as unknown as Record<string, QrSdkCtor | undefined>).WxLogin;
+  if (!WxLoginCtor) throw new Error("微信扫码组件加载失败");
+
+  wechatSdkCleanup?.();
+  wechatSdkCleanup = null;
+  const container = document.getElementById(QRCODE_CONTAINER_ID);
+  if (container) container.innerHTML = "";
+
+  const options: Record<string, unknown> = {
+    self_redirect: true,
+    id: QRCODE_CONTAINER_ID,
+    appid: config.appId,
+    scope: "snsapi_login",
+    redirect_uri: encodeURIComponent(config.redirectUri),
+    state: config.state,
+    // ThemeMode 取值（light / dark / auto）与官方 color_scheme 完全一致，直接透传
+    color_scheme: settingsStore.theme,
+    href: buildWechatQrcodeHref(),
+  };
+  new WxLoginCtor(options);
+  wechatQrcodeConfig = config;
+  wechatSdkCleanup =
+    typeof options.onCleanup === "function" ? (options.onCleanup as () => void) : null;
+}
+
+/** color_scheme 已写进 iframe 的 src，主题切换后必须重建 iframe */
+watch(
+  () => settingsStore.theme,
+  () => {
+    if (loginMode.value !== "qrcode" || qrcodeProvider.value !== "WECHAT") return;
+    const config = wechatQrcodeConfig;
+    if (!config) return;
+    try {
+      renderWechatQrcode(config);
+    } catch (error) {
+      qrcodeError.value = error instanceof Error ? error.message : "二维码加载失败";
+    }
+  }
+);
+
+/**
  * 点击微信 / QQ：在登录卡片内渲染官方扫码组件，不跳转页面。
  * 扫码确认后，组件内部跳到中转页，中转页通过 postMessage 把 code 传回本页。
  */
@@ -624,17 +696,12 @@ async function handleOauthLogin(provider: OauthProvider) {
 
     if (provider === "WECHAT") {
       await loadSdk("https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js", "wxLogin");
-      const WxLoginCtor = (window as unknown as Record<string, QrSdkCtor | undefined>).WxLogin;
-      if (!WxLoginCtor) throw new Error("微信扫码组件加载失败");
-      // 完全按官方文档「将微信登录二维码内嵌到自己页面」的原生参数配置。
-      // 不传 stylelite：新版 UI 在内嵌模式下不显示「使用微信扫一扫登录 / 应用名」文字，
-      // 旧版 UI 内嵌才显示（官方 FAQ 中的新旧 UI 对比图均为整页模式效果）。
-      new WxLoginCtor({
-        self_redirect: true,
-        id: QRCODE_CONTAINER_ID,
-        appid: providerConfig.appId,
-        scope: "snsapi_login",
-        redirect_uri: encodeURIComponent(providerConfig.redirectUri),
+      // 按官方文档「将微信登录二维码内嵌到自己页面」的最新参数渲染：
+      // color_scheme 直接透传项目主题，href 用于把快捷登录面板垂直居中。
+      // 不传 stylelite：新版 UI 内嵌不显示应用名，且会让 href 自定义样式失效。
+      renderWechatQrcode({
+        appId: providerConfig.appId,
+        redirectUri: providerConfig.redirectUri,
         state,
       });
     } else {
@@ -1288,6 +1355,16 @@ $input-h: 44px;
       height: 100%;
       border: none;
     }
+
+    /* 仅微信内嵌页需要恢复透明背景，QQ 授权 iframe 不受影响 */
+    &--wechat :deep(iframe) {
+      /*
+       * Element Plus 深色模式会给 html 添加 color-scheme: dark，
+       * 会让 allowTransparency 的微信 iframe 变成不透明白底；
+       * 只对微信 iframe 恢复 light，让容器深色背景透出来。
+       */
+      color-scheme: light;
+    }
   }
 
   &__qrcode-mask {
@@ -1311,8 +1388,8 @@ $input-h: 44px;
   /* 短信发送前的图形验证行（与短信验证码输入互斥显示） */
   &__sms-captcha {
     display: flex;
-    align-items: center;
     gap: 8px;
+    align-items: center;
     margin: 0 0 18px;
 
     :deep(.el-button) {

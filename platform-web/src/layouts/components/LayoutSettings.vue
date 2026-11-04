@@ -12,9 +12,9 @@
 
         <div class="theme-mode">
           <el-radio-group v-model="themeMode">
-            <el-radio-button :value="ThemeMode.LIGHT">明亮</el-radio-button>
-            <el-radio-button :value="ThemeMode.DARK">暗黑</el-radio-button>
-            <el-radio-button :value="ThemeMode.AUTO">自动</el-radio-button>
+            <el-radio-button :value="ThemeMode.LIGHT">浅色</el-radio-button>
+            <el-radio-button :value="ThemeMode.DARK">深色</el-radio-button>
+            <el-radio-button :value="ThemeMode.AUTO">跟随系统</el-radio-button>
           </el-radio-group>
         </div>
 

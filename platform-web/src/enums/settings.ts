@@ -5,12 +5,12 @@ import type { OptionItem } from "@/api/common";
  * 主题模式枚举
  */
 export const enum ThemeMode {
-  /** 明亮主题 */
+  /** 浅色主题 */
   LIGHT = "light",
-  /** 暗黑主题 */
+  /** 深色主题 */
   DARK = "dark",
 
-  /** 系统自动 */
+  /** 跟随系统 */
   AUTO = "auto",
 }
 
