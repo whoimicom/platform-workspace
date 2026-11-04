@@ -323,10 +323,6 @@
                   <div
                     :id="QRCODE_CONTAINER_ID"
                     class="login-card__qrcode-inner"
-                    :class="{
-                      'login-card__qrcode-inner--wechat': qrcodeProvider === 'WECHAT',
-                      'login-card__qrcode-inner--qq': qrcodeProvider === 'QQ',
-                    }"
                   ></div>
                   <div v-if="qrcodeLoading" class="login-card__qrcode-mask">
                     <el-icon class="is-loading"><Loading /></el-icon>
@@ -630,6 +626,9 @@ async function handleOauthLogin(provider: OauthProvider) {
       await loadSdk("https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js", "wxLogin");
       const WxLoginCtor = (window as unknown as Record<string, QrSdkCtor | undefined>).WxLogin;
       if (!WxLoginCtor) throw new Error("微信扫码组件加载失败");
+      // 完全按官方文档「将微信登录二维码内嵌到自己页面」的原生参数配置。
+      // 不传 stylelite：新版 UI 在内嵌模式下不显示「使用微信扫一扫登录 / 应用名」文字，
+      // 旧版 UI 内嵌才显示（官方 FAQ 中的新旧 UI 对比图均为整页模式效果）。
       new WxLoginCtor({
         self_redirect: true,
         id: QRCODE_CONTAINER_ID,
@@ -637,8 +636,6 @@ async function handleOauthLogin(provider: OauthProvider) {
         scope: "snsapi_login",
         redirect_uri: encodeURIComponent(providerConfig.redirectUri),
         state,
-        // 新版登录页开关：带底部“快捷登录”入口，面板尺寸 300×450
-        login_type: "jssdk",
       });
     } else {
       await loadSdk("https://res.connect.qq.com/jssdk/index.js", "qqLogin");
@@ -1258,7 +1255,7 @@ $input-h: 44px;
     }
   }
 
-  /* 内嵌三方扫码二维码：保持官方 300×400 原始面板，不做额外卡片修饰 */
+  /* 内嵌三方扫码二维码：微信新 UI 面板为 300×450，QQ 自适应容器，统一按 300×450 预留 */
   &__qrcode-title {
     text-align: center;
   }
@@ -1280,28 +1277,16 @@ $input-h: 44px;
   &__qrcode-inner {
     position: relative;
     display: flex;
+    width: 300px;
+    height: 450px;
     overflow: hidden;
-    background: #fff;
+    background: var(--el-bg-color);
 
     :deep(iframe) {
       display: block;
-      width: 300px;
-      height: 450px;
-      border: none;
-    }
-  }
-
-  /*
-   * QQLogin JSSDK 会按容器尺寸自适应：宽高低于 280px 会出现内部滚动条，
-   * 因此给 QQ 容器明确尺寸，并让 iframe 填满容器。
-   */
-  &__qrcode-inner--qq {
-    width: 300px;
-    height: 400px;
-
-    :deep(iframe) {
       width: 100%;
       height: 100%;
+      border: none;
     }
   }
 
@@ -1321,30 +1306,6 @@ $input-h: 44px;
     font-size: 13px;
     color: var(--el-color-danger);
     text-align: center;
-  }
-
-  /* 视口高度不足时整体缩小官方面板，避免整页出现滚动条 */
-  @media (max-height: 820px) {
-    &__qrcode-inner--wechat :deep(iframe) {
-      zoom: 0.85;
-    }
-
-    /* QQ 不缩放而直接缩小容器，避免 SDK 因容器过小改成紧凑布局 */
-    &__qrcode-inner--qq {
-      width: 290px;
-      height: 350px;
-    }
-  }
-
-  @media (max-height: 700px) {
-    &__qrcode-inner--wechat :deep(iframe) {
-      zoom: 0.7;
-    }
-
-    &__qrcode-inner--qq {
-      width: 280px;
-      height: 300px;
-    }
   }
 
   /* 短信发送前的图形验证行（与短信验证码输入互斥显示） */
