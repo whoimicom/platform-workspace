@@ -129,15 +129,15 @@
                 <div class="login-card__alt-divider">其他登录方式</div>
                 <div class="flex gap-12px">
                   <button class="login-card__alt-btn" type="button" @click="handleOauthLogin('WECHAT')">
-                    <span class="i-svg:user login-card__alt-icon" />
+                    <span class="i-svg:wechat login-card__alt-icon" />
                     微信
                   </button>
                   <button class="login-card__alt-btn" type="button" @click="handleOauthLogin('QQ')">
-                    <span class="i-svg:user login-card__alt-icon" />
+                    <span class="i-svg:qq login-card__alt-icon" />
                     QQ
                   </button>
                   <button class="login-card__alt-btn" type="button" @click="switchToSmsLogin">
-                    <span class="i-svg:user login-card__alt-icon" />
+                    <span class="i-svg:message login-card__alt-icon" />
                     验证码
                   </button>
                 </div>
