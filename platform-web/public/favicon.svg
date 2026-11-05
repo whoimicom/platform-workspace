@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="20" height="20" role="img" aria-label="Platform">
+  <defs>
+    <linearGradient id="lgBase" x1="8" y1="5" x2="57" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4E8CFF" />
+      <stop offset="0.52" stop-color="#165DFF" />
+      <stop offset="1" stop-color="#0B36B4" />
+    </linearGradient>
+    <linearGradient id="lgSheen" x1="32" y1="2" x2="32" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18" />
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#lgBase)" />
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#lgSheen)" />
+
+  <path
+    d="M18 47V17H36A10 10 0 0 1 36 37H18"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

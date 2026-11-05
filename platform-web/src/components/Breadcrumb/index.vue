@@ -76,17 +76,31 @@ function handleLink(item: BreadcrumbRoute) {
   });
 }
 
-// 路由变化就重算面包屑，但 /redirect/ 这类中转路由跳过
+/**
+ * 路由签名：完整反映当前导航状态（fullPath 含 query，matched 反映动态路由 addRoute 后的链）
+ * 同时监听两者：动态路由 addRoute + replace 场景下 path 可能不变但 matched 会变
+ */
+const routeSignature = computed(() => {
+  const titles = currentRoute.matched
+    .map((m) => m.meta?.title ?? "")
+    .filter(Boolean)
+    .join("/");
+  return `${currentRoute.fullPath}::${titles}`;
+});
+
 watch(
-  () => currentRoute.path,
-  (path) => {
-    if (path.startsWith("/redirect/")) {
+  routeSignature,
+  () => {
+    // /redirect/ 这类中转路由跳过
+    if (currentRoute.path.startsWith("/redirect/")) {
       return;
     }
     getBreadcrumb();
-  }
+  },
+  { immediate: true }
 );
 
+// DOM 创建前再兜底一次，确保 el-breadcrumb 首次渲染时 children 已正确
 onBeforeMount(() => {
   getBreadcrumb();
 });
