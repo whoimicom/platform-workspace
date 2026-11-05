@@ -45,7 +45,7 @@ export function useNotice() {
     )
       return;
     list.value = page.content ?? [];
-    if (query.isRead === 0) unreadTotal.value = page.totalElements ?? 0;
+    if (query.isRead === 0) unreadTotal.value = page.page?.totalElements ?? 0;
   }
 
   /**
@@ -60,7 +60,7 @@ export function useNotice() {
       isRead: 0,
     });
     if (disposed || revision !== authSessionRevision.value || sequence !== unreadSequence) return;
-    unreadTotal.value = page.totalElements ?? 0;
+    unreadTotal.value = page.page?.totalElements ?? 0;
   }
 
   /**

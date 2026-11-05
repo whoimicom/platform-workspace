@@ -1,6 +1,6 @@
 import request from "@/utils/request";
 import type { ConfigQuery, ConfigForm, ConfigItem } from "./types";
-import type { Page } from "@/api/common";
+import type { Pagination } from "@/api/common";
 
 const CONFIG_BASE_URL = "/api/configs";
 
@@ -9,7 +9,7 @@ const ConfigAPI = {
    * 获取配置分页数据
    */
   getPage(queryParams?: ConfigQuery) {
-    return request<unknown, Page<ConfigItem>>({
+    return request<unknown, Pagination<ConfigItem>>({
       url: CONFIG_BASE_URL,
       method: "get",
       params: queryParams,

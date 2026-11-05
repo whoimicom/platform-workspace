@@ -8,7 +8,7 @@ import type {
   DictItemForm,
   DictItemOption,
 } from "./types";
-import type { OptionItem, Page } from "@/api/common";
+import type { OptionItem, Pagination } from "@/api/common";
 
 const DICT_BASE_URL = "/api/dicts";
 
@@ -63,7 +63,7 @@ const DictAPI = {
    * 字典分页列表
    */
   getPage(queryParams: DictTypeQuery) {
-    return request<unknown, Page<DictTypeItem>>({
+    return request<unknown, Pagination<DictTypeItem>>({
       url: DICT_BASE_URL,
       method: "get",
       params: queryParams,
@@ -105,7 +105,7 @@ const DictAPI = {
    * 获取字典项分页列表
    */
   getDictItemPage(dictCode: string, queryParams: DictItemQuery) {
-    return request<unknown, Page<DictItem>>({
+    return request<unknown, Pagination<DictItem>>({
       url: `${DICT_BASE_URL}/${dictCode}/items`,
       method: "get",
       params: queryParams,

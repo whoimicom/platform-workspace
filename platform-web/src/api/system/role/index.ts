@@ -1,6 +1,6 @@
 import request from "@/utils/request";
 import type { RoleQuery, RoleItem, RoleForm } from "./types";
-import type { OptionItem, Page } from "@/api/common";
+import type { OptionItem, Pagination } from "@/api/common";
 
 const ROLE_BASE_URL = "/api/roles";
 
@@ -9,7 +9,7 @@ const RoleAPI = {
    * 获取角色分页数据
    */
   getPage(queryParams?: RoleQuery) {
-    return request<unknown, Page<RoleItem>>({
+    return request<unknown, Pagination<RoleItem>>({
       url: ROLE_BASE_URL,
       method: "get",
       params: queryParams,

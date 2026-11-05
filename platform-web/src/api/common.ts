@@ -40,27 +40,30 @@ export type SortDirection = "asc" | "desc";
 export type SortExpression<TField extends string = string> = `${TField},${SortDirection}`;
 
 /**
- * 分页接口结果，对齐 Spring Data Page 的 JSON 结构。
+ * 分页接口结果，对齐 Spring Data Web {@code VIA_DTO} 序列化模式。
+ *
+ * <p>后端通过 {@code @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)} 输出
+ * 稳定 DTO 结构：content 是当前页数据，page 是分页元模型。
  */
-export interface Page<T> {
+export interface Pagination<T> {
   /** 当前页数据 */
   content: T[];
-  /** 总记录数 */
-  totalElements: number;
-  /** 总页数 */
-  totalPages: number;
+  /** 分页元信息 */
+  page: PageMeta;
+}
+
+/**
+ * 分页元信息，与后端 VIA_DTO 输出完全对齐。
+ */
+export interface PageMeta {
   /** 当前页码（从 0 开始） */
   number: number;
   /** 每页记录数 */
   size: number;
-  /** 当前页记录数 */
-  numberOfElements: number;
-  /** 是否首页 */
-  first: boolean;
-  /** 是否末页 */
-  last: boolean;
-  /** 是否空页 */
-  empty: boolean;
+  /** 总记录数 */
+  totalElements: number;
+  /** 总页数 */
+  totalPages: number;
 }
 
 /**

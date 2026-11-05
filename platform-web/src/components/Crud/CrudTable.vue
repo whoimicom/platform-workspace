@@ -1113,7 +1113,7 @@ async function loadData(query: CrudRecord = appliedQuery, resetPage = false): Pr
     const data = await props.tableConfig.fetchData(params);
     if (sequence !== pageSequence) return;
     const rows = Array.isArray(data) ? data : data?.content;
-    const total = Array.isArray(data) ? data.length : data?.totalElements;
+    const total = Array.isArray(data) ? data.length : data?.page?.totalElements;
     if (!Array.isArray(rows) || !Number.isInteger(total) || total < 0)
       throw new Error("请在 fetchData 中将接口结果转换为数组或 Page");
     const maxPage = Math.max(1, Math.ceil(total / pagination.pageSize));

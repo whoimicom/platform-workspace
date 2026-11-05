@@ -1,39 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration>
 
-    <!-- 应用名，日志目录按应用隔离：~/logs/platform-api/ -->
+<!--
+  Spring Boot Logback 配置
+  - 控制台 + all.log + error.log 三通道
+  - 按天滚动打包（gzip），单文件 100MB，保留 60 天
+  - traceId 贯穿所有日志，方便链路追踪
+  - scan=60s：修改本文件后 60 秒自动生效，无需重启
+-->
+<configuration scan="true" scanPeriod="60 seconds" debug="false">
+
+    <!-- 引入 Spring Boot 默认模板：提供 LOG_LEVEL_PATTERN、EXCEPTION_CONVERSION_RULES 等标准变量 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 应用名 → 日志目录：~/logs/${spring.application.name}/ -->
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="app"/>
     <property name="LOG_HOME" value="${user.home}/logs/${APP_NAME}"/>
 
-    <!-- 日志格式：时间 级别 [线程] traceId logger : 消息 -->
-    <property name="LOG_PATTERN"
-              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%15.15t] %X{traceId} %-40.40logger{39} : %m%n"/>
+    <!-- 日志级别（可通过 application.yml 覆盖 logging.level） -->
+    <property name="LOG_LEVEL" value="INFO"/>
 
-    <!-- 控制台输出 -->
+    <!-- 滚动策略参数 -->
+    <property name="MAX_HISTORY" value="60"/>           <!-- 保留天数 -->
+    <property name="MAX_FILE_SIZE" value="100MB"/>      <!-- 单文件上限 -->
+    <property name="ALL_TOTAL_CAP" value="5GB"/>        <!-- all.log 总上限 -->
+    <property name="ERR_TOTAL_CAP" value="1GB"/>        <!-- error.log 总上限 -->
+
+    <!-- 日志格式：时间 + 级别 + 线程 + traceId + logger + 消息 -->
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} [%15.15t] [%X{traceId:-}-] %-40.40logger{39} - %m%n"/>
+
+    <!-- 控制台彩色格式：不同级别高亮显示 -->
+    <property name="CONSOLE_PATTERN"
+              value="%d{HH:mm:ss.SSS} %clr(${LOG_LEVEL_PATTERN:-%5p}) [%15.15t] [%X{traceId:-}-] %boldMagenta(%logger{20}) - %msg%n"/>
+
+    <!-- 上下文名 -->
+    <contextName>${APP_NAME}</contextName>
+
+    <!-- 控制台输出（彩色） -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>${LOG_PATTERN}</pattern>
+            <pattern>${CONSOLE_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
 
-    <!-- all.log：记录所有日志，按天滚动打包，保留 60 天 -->
-    <appender name="ALL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- all.log：记录所有级别日志，按天+大小滚动打包 -->
+    <appender name="ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_HOME}/all.log</file>
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_HOME}/all.log.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>60</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
+            <fileNamePattern>${LOG_HOME}/%d{yyyyMMdd}.all.%i.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>${MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${ALL_TOTAL_CAP}</totalSizeCap>
         </rollingPolicy>
     </appender>
 
-    <!-- error.log：仅记录 ERROR 级别，按天滚动打包，保留 60 天 -->
-    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- error.log：仅 ERROR 级别 -->
+    <appender name="ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_HOME}/error.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>ERROR</level>
@@ -45,17 +72,49 @@
             <charset>UTF-8</charset>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_HOME}/error.log.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>60</maxHistory>
-            <totalSizeCap>1GB</totalSizeCap>
+            <fileNamePattern>${LOG_HOME}/%d{yyyyMMdd}.error.%i.gz</fileNamePattern>
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>${MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${ERR_TOTAL_CAP}</totalSizeCap>
         </rollingPolicy>
     </appender>
 
-    <root level="INFO">
+    <!-- ==================== 调试专用 logger（默认注释，开发时按需启用） ==================== -->
+
+    <!-- JdbcTemplate：SQL 语句 + 参数绑定 -->
+    <!--
+    <logger name="org.springframework.jdbc.core.JdbcTemplate" level="DEBUG"/>
+    <logger name="org.springframework.jdbc.core.StatementCreatorUtils" level="TRACE"/>
+    -->
+
+    <!-- RestTemplate：HTTP 请求/响应报文 -->
+    <!--
+    <logger name="org.springframework.web.client.RestTemplate" level="DEBUG"/>
+    -->
+
+    <!-- Spring Data Repository 自动配置（抑制 WARN 噪音） -->
+    <!--
+    <logger name="org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport" level="ERROR"/>
+    -->
+
+    <!-- ==================== 根 logger ==================== -->
+    <root level="${LOG_LEVEL}">
         <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="ALL_FILE"/>
-        <appender-ref ref="ERROR_FILE"/>
+        <appender-ref ref="ALL"/>
+        <appender-ref ref="ERROR"/>
     </root>
+
+    <!--
+      TurboFilter：运行时通过 MDC 临时停掉日志
+      用法：MDC.put("stopLog", "true"); // 后续所有日志都被 DENY
+            // 执行敏感操作...
+            MDC.remove("stopLog");    // 恢复
+      注意：TurboFilter 是 root 级拦截，在 appender filter 之前，性能开销极低
+    -->
+    <turboFilter class="ch.qos.logback.classic.turbo.MDCFilter">
+        <MDCKey>stopLog</MDCKey>
+        <Value>true</Value>
+        <OnMatch>DENY</OnMatch>
+    </turboFilter>
 
 </configuration>

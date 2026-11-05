@@ -13,7 +13,7 @@ import type {
   UserPerms,
   UserPermsForm,
 } from "./types";
-import type { ExcelResult, OptionItem, Page } from "@/api/common";
+import type { ExcelResult, OptionItem, Pagination } from "@/api/common";
 
 const USER_BASE_URL = "/api/users";
 
@@ -32,7 +32,7 @@ const UserAPI = {
    * 获取用户分页列表
    */
   getPage(queryParams: UserQuery) {
-    return request<unknown, Page<UserItem>>({
+    return request<unknown, Pagination<UserItem>>({
       url: USER_BASE_URL,
       method: "get",
       params: queryParams,

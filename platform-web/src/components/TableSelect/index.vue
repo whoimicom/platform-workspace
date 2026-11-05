@@ -269,7 +269,7 @@ function fetchPageData(isRestart = false) {
   props.selectConfig
     .indexAction(queryParams)
     .then((data) => {
-      total.value = data.totalElements ?? 0;
+      total.value = data.page?.totalElements ?? 0;
       pageData.value = data.content ?? [];
     })
     .finally(() => {
