@@ -1,0 +1,36 @@
+# MySQL 字段类型 → Java 类型映射
+# 未命中的类型按 String 兜底；键为去掉长度/unsigned 后的基础类型（小写）
+varchar: String
+char: String
+tinytext: String
+text: String
+mediumtext: String
+longtext: String
+enum: String
+set: String
+json: String
+tinyint: Integer
+smallint: Integer
+mediumint: Integer
+int: Integer
+integer: Integer
+bigint: Long
+decimal: BigDecimal
+numeric: BigDecimal
+double: Double
+real: Double
+float: Float
+date: LocalDate
+datetime: LocalDateTime
+timestamp: LocalDateTime
+time: String
+year: String
+bit: Boolean
+bool: Boolean
+boolean: Boolean
+blob: String
+tinyblob: String
+mediumblob: String
+longblob: String
+binary: String
+varbinary: String

@@ -149,7 +149,10 @@ public final class RecordRowMapper<T> implements RowMapper<T> {
                 types[i] = components[i].getType();
             }
             try {
-                return new Meta(key, key.getDeclaredConstructor(types), names, types);
+                Constructor<?> constructor = key.getDeclaredConstructor(types);
+                // 私有嵌套 record 的规范构造函数是 private，需要开放访问
+                constructor.setAccessible(true);
+                return new Meta(key, constructor, names, types);
             } catch (NoSuchMethodException e) {
                 throw new IllegalStateException("record 规范构造函数不存在: " + key.getName(), e);
             }

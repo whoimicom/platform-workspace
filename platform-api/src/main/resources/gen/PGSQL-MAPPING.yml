@@ -1,0 +1,42 @@
+# PostgreSQL 字段类型 → Java 类型映射
+# 未命中的类型按 String 兜底；键为去掉长度后的基础类型（小写）
+varchar: String
+character varying: String
+char: String
+character: String
+text: String
+uuid: String
+citext: String
+name: String
+xml: String
+json: String
+jsonb: String
+bytea: String
+smallint: Integer
+int2: Integer
+integer: Integer
+int4: Integer
+serial: Integer
+serial4: Integer
+bigint: Long
+int8: Long
+bigserial: Long
+serial8: Long
+numeric: BigDecimal
+decimal: BigDecimal
+money: BigDecimal
+real: Float
+float4: Float
+double precision: Double
+float8: Double
+boolean: Boolean
+bool: Boolean
+date: LocalDate
+timestamp: LocalDateTime
+timestamp without time zone: LocalDateTime
+timestamptz: LocalDateTime
+timestamp with time zone: LocalDateTime
+time: String
+timetz: String
+time without time zone: String
+time with time zone: String
