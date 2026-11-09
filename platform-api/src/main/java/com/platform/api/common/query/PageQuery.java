@@ -12,8 +12,14 @@ import java.util.List;
  */
 public class PageQuery {
 
+    /** 每页最大条数：防止前端注入超大 pageSize 一次拉取全量数据 */
+    public static final int MAX_PAGE_SIZE = 100;
+
+    /** 默认每页条数 */
+    public static final int DEFAULT_PAGE_SIZE = 10;
+
     private Integer pageNum = 1;
-    private Integer pageSize = 10;
+    private Integer pageSize = DEFAULT_PAGE_SIZE;
     private List<String> sort = new ArrayList<>();
 
     public Integer getPageNum() {
@@ -28,8 +34,12 @@ public class PageQuery {
         return pageSize;
     }
 
+    /**
+     * 参数绑定阶段即完成收敛，后续无论读取 getPageSize 还是 safePageSize 都不会超过上限。
+     */
     public void setPageSize(Integer pageSize) {
-        this.pageSize = pageSize;
+        this.pageSize = pageSize == null ? DEFAULT_PAGE_SIZE
+                : Math.min(MAX_PAGE_SIZE, Math.max(1, pageSize));
     }
 
     public List<String> getSort() {
@@ -51,6 +61,7 @@ public class PageQuery {
      * 修正后的每页条数，范围 [1, 100]。
      */
     public int safePageSize() {
-        return pageSize == null ? 10 : Math.min(100, Math.max(1, pageSize));
+        return pageSize == null ? DEFAULT_PAGE_SIZE
+                : Math.min(MAX_PAGE_SIZE, Math.max(1, pageSize));
     }
 }

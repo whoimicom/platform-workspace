@@ -59,9 +59,39 @@ public class DynamicQueryExecutor {
      */
     public <T> Page<T> page(String baseSql, PageQuery query, Map<String, Object> contextParams,
                             String defaultOrder, RowMapper<T> rowMapper, RawCondition... extras) {
+        return page(baseSql, null, query, contextParams, defaultOrder, rowMapper, extras);
+    }
+
+    /**
+     * 分页查询，指定 countSql 优化总数统计。
+     *
+     * <p>默认统计方式为 {@code SELECT COUNT(*) FROM (完整列表 SQL) count_wrapper}，
+     * MySQL 无法裁剪派生表，宽表多表 JOIN 时开销较大。countSql 允许传
+     * {@code SELECT COUNT(*) FROM 主表 别名}（可保留条件用到的 JOIN），
+     * 只拼接与本查询相同的 WHERE 条件，不再套一层派生表。
+     */
+    public <T> Page<T> page(String baseSql, String countSql, PageQuery query,
+                            RowMapper<T> rowMapper, RawCondition... extras) {
+        return page(baseSql, countSql, query, Map.of(), rowMapper, extras);
+    }
+
+    /**
+     * 分页查询（含 countSql），baseSql 需要额外命名参数时使用 contextParams 提供。
+     */
+    public <T> Page<T> page(String baseSql, String countSql, PageQuery query,
+                            Map<String, Object> contextParams, RowMapper<T> rowMapper, RawCondition... extras) {
+        return page(baseSql, countSql, query, contextParams, null, rowMapper, extras);
+    }
+
+    /**
+     * 分页查询（含 countSql），可覆盖查询类注解声明的默认排序。
+     */
+    public <T> Page<T> page(String baseSql, String countSql, PageQuery query,
+                            Map<String, Object> contextParams, String defaultOrder,
+                            RowMapper<T> rowMapper, RawCondition... extras) {
         int pageNum = query.safePageNum();
         int pageSize = query.safePageSize();
-        Parsed parsed = parse(baseSql, query, contextParams, defaultOrder, extras);
+        Parsed parsed = parse(baseSql, countSql, query, contextParams, defaultOrder, extras);
 
         StringBuilder pagedSql = new StringBuilder(parsed.sql());
         pagedSql.append(" LIMIT :").append(LIMIT_PARAM).append(" OFFSET :").append(OFFSET_PARAM);
@@ -85,7 +115,7 @@ public class DynamicQueryExecutor {
      */
     public <T> List<T> list(String baseSql, Object query, Map<String, Object> contextParams,
                             RowMapper<T> rowMapper, RawCondition... extras) {
-        Parsed parsed = parse(baseSql, query, contextParams, null, extras);
+        Parsed parsed = parse(baseSql, null, query, contextParams, null, extras);
         return jdbc.query(parsed.sql(), parsed.params(), rowMapper);
     }
 
@@ -93,13 +123,15 @@ public class DynamicQueryExecutor {
      * 仅统计满足条件的总数。
      */
     public long count(String baseSql, Object query, Map<String, Object> contextParams, RawCondition... extras) {
-        return parse(baseSql, query, contextParams, null, extras).total();
+        return parse(baseSql, null, query, contextParams, null, extras).total();
     }
 
     /**
      * 条件、排序组装结果：完整 SQL + 合并后的参数 + 总数。
+     *
+     * @param countSql 自定义总数统计 SQL（不含 WHERE）；为空时退化为派生表统计
      */
-    private Parsed parse(String baseSql, Object query, Map<String, Object> contextParams,
+    private Parsed parse(String baseSql, String countSql, Object query, Map<String, Object> contextParams,
                          String overrideDefaultOrder, RawCondition... extras) {
         Class<?> queryClass = query.getClass();
         Map<String, Object> params = new HashMap<>(contextParams);
@@ -108,9 +140,12 @@ public class DynamicQueryExecutor {
         appendAnnotatedConditions(query, params, conditions);
         appendRawConditions(extras, params, conditions);
 
-        String sql = conditions.isEmpty() ? baseSql : baseSql + " WHERE " + String.join(" AND ", conditions);
-        long total = requireCount(jdbc.queryForObject(
-                "SELECT COUNT(*) FROM (" + sql + ") count_wrapper", params, Long.class));
+        String whereClause = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
+        String sql = baseSql + whereClause;
+        String totalSql = StringUtils.hasText(countSql)
+                ? countSql + whereClause
+                : "SELECT COUNT(*) FROM (" + sql + ") count_wrapper";
+        long total = requireCount(jdbc.queryForObject(totalSql, params, Long.class));
 
         String orderBy = resolveOrderBy(queryClass, query instanceof PageQuery pageQuery ? pageQuery.getSort() : null,
                 overrideDefaultOrder);
