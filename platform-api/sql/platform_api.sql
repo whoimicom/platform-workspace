@@ -255,13 +255,13 @@ CREATE TABLE IF NOT EXISTS `zl_order` (
 -- ============================================================
 -- 代码生成模块
 -- ============================================================
-CREATE TABLE IF NOT EXISTS sys_gen_table (
+CREATE TABLE IF NOT EXISTS sys_gen_config (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
-    table_name VARCHAR(100) NOT NULL COMMENT '表名',
-    table_comment VARCHAR(255) DEFAULT NULL COMMENT '表注释',
+    config_name VARCHAR(100) NOT NULL COMMENT '配置名称',
+    main_table VARCHAR(100) NOT NULL COMMENT '主表名',
+    function_name VARCHAR(100) NOT NULL COMMENT '功能名（页面标题）',
     module_name VARCHAR(64) NOT NULL DEFAULT 'rental' COMMENT '模块名（后端包名/前端目录一级）',
     business_name VARCHAR(64) NOT NULL COMMENT '业务名（camelCase）',
-    function_name VARCHAR(100) NOT NULL COMMENT '功能名（页面标题）',
     class_name VARCHAR(100) NOT NULL COMMENT 'Java 类名',
     frontend_path VARCHAR(128) NOT NULL COMMENT '前端页面路径',
     perm_prefix VARCHAR(100) NOT NULL COMMENT '权限前缀',
@@ -271,25 +271,44 @@ CREATE TABLE IF NOT EXISTS sys_gen_table (
     create_time DATETIME DEFAULT NULL,
     update_time DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_table_name (table_name)
+    UNIQUE KEY uk_main_table (main_table)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '代码生成配置表';
 
-CREATE TABLE IF NOT EXISTS sys_gen_table_column (
+CREATE TABLE IF NOT EXISTS sys_gen_config_table (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
-    table_id BIGINT NOT NULL COMMENT 'sys_gen_table.id',
-    sort INT NOT NULL DEFAULT 0 COMMENT '排序',
+    config_id BIGINT NOT NULL COMMENT 'sys_gen_config.id',
+    table_name VARCHAR(100) NOT NULL COMMENT '表名',
+    table_comment VARCHAR(255) DEFAULT NULL COMMENT '表注释',
+    table_alias VARCHAR(64) NOT NULL COMMENT 'SQL 别名（t/t1...）',
+    relation_type VARCHAR(16) NOT NULL COMMENT '关联方式 MAIN/ONE_TO_ONE/ONE_TO_MANY/MANY_TO_ONE',
+    main_column VARCHAR(100) DEFAULT NULL COMMENT '主表参与关联的列',
+    join_column VARCHAR(100) DEFAULT NULL COMMENT '关联表参与关联的列',
+    sort INT NOT NULL DEFAULT 0 COMMENT '排序（决定 JOIN 顺序）',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_config_table (config_id, table_name),
+    KEY idx_config (config_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '代码生成关联表配置';
+
+CREATE TABLE IF NOT EXISTS sys_gen_config_column (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    config_id BIGINT NOT NULL COMMENT 'sys_gen_config.id',
+    table_name VARCHAR(100) NOT NULL COMMENT '所属表名',
     column_name VARCHAR(100) NOT NULL COMMENT '列名',
     column_type VARCHAR(64) NOT NULL COMMENT '列类型',
     column_comment VARCHAR(255) DEFAULT NULL COMMENT '列注释',
-    property_name VARCHAR(100) NOT NULL COMMENT 'Java 属性名',
+    display_name VARCHAR(64) DEFAULT NULL COMMENT '显示列名（为空时使用列注释）',
+    property_name VARCHAR(100) NOT NULL COMMENT '实体属性名（camelCase）',
     java_type VARCHAR(64) NOT NULL DEFAULT 'String' COMMENT 'Java 类型',
     is_pk TINYINT NOT NULL DEFAULT 0 COMMENT '是否主键',
     is_required TINYINT NOT NULL DEFAULT 0 COMMENT '是否必填',
     is_list TINYINT NOT NULL DEFAULT 1 COMMENT '是否列表展示',
     is_filter TINYINT NOT NULL DEFAULT 0 COMMENT '是否查询条件',
     filter_type VARCHAR(16) NOT NULL DEFAULT 'EQ' COMMENT '条件类型 EQ/NE/GT/GE/LT/LE/LIKE/LIKE_LEFT/LIKE_RIGHT/IN/NOT_IN/BETWEEN',
+    is_form TINYINT NOT NULL DEFAULT 1 COMMENT '是否表单字段',
+    form_component VARCHAR(16) DEFAULT NULL COMMENT '表单元素 INPUT/TEXTAREA/NUMBER/DATE/DATETIME/SWITCH/SELECT',
+    sort INT NOT NULL DEFAULT 0 COMMENT '排序',
     PRIMARY KEY (id),
-    KEY idx_table_id (table_id)
+    KEY idx_config (config_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '代码生成字段配置表';
 
 -- ============================================================
@@ -396,7 +415,8 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, route_name, redirect, com
     (30102, 301, '导入表', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 1, NULL, 'gen:config:import', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
     (30103, 301, '配置编辑', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 3, 1, 1, NULL, 'gen:config:edit', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
     (30104, 301, '配置删除', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 4, 1, 1, NULL, 'gen:config:delete', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (30105, 301, '代码预览', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 5, 1, 1, NULL, 'gen:config:preview', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
+    (30105, 301, '代码预览', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 5, 1, 1, NULL, 'gen:config:preview', '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
+    (30106, 301, '生成代码', 'B', NULL, NULL, NULL, NULL, NULL, NULL, 6, 1, 1, NULL, 'gen:config:generate', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
 
 -- 超级管理员 / 系统管理员拥有全部菜单权限
 INSERT INTO sys_role_menu (role_id, menu_id)

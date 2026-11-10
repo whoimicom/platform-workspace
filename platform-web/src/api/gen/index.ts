@@ -1,11 +1,13 @@
 import request from "@/utils/request";
 import type { Pagination } from "@/api/common";
 import type {
+  DbColumnItem,
   DbTableItem,
   GenConfigDetail,
   GenConfigForm,
   GenConfigItem,
   GenFileItem,
+  GenImportForm,
   GenQuery,
 } from "./types";
 
@@ -24,6 +26,16 @@ const GenAPI = {
   },
 
   /**
+   * 指定表的字段列表（选择关联列）
+   */
+  getDbColumns(tableName: string) {
+    return request<unknown, DbColumnItem[]>({
+      url: `${GEN_BASE_URL}/db-tables/${tableName}/columns`,
+      method: "get",
+    });
+  },
+
+  /**
    * 已保存的生成配置
    */
   getConfigs(queryParams?: GenQuery) {
@@ -35,12 +47,13 @@ const GenAPI = {
   },
 
   /**
-   * 导入表（重复导入返回已有配置）
+   * 导入多张表（重复导入返回已有配置）
    */
-  importTable(tableName: string) {
+  createConfig(data: GenImportForm) {
     return request<unknown, number>({
-      url: `${GEN_BASE_URL}/configs/import/${tableName}`,
+      url: `${GEN_BASE_URL}/configs`,
       method: "post",
+      data,
     });
   },
 
@@ -75,6 +88,16 @@ const GenAPI = {
     return request<unknown, GenFileItem[]>({
       url: `${GEN_BASE_URL}/configs/${id}/preview`,
       method: "get",
+    });
+  },
+
+  /**
+   * 生成代码并直接写入项目目录（覆盖同路径文件），返回写入的文件路径
+   */
+  generate(id: number) {
+    return request<unknown, string[]>({
+      url: `${GEN_BASE_URL}/configs/${id}/generate`,
+      method: "post",
     });
   },
 };

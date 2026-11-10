@@ -1,49 +1,69 @@
 import request from "@/utils/request";
-import type { RentalOrderQuery, RentalOrderForm, RentalOrderItem } from "./types";
 import type { Pagination } from "@/api/common";
+import type {
+  OrderDetail,
+  OrderItem,
+  OrderQuery,
+  OrderSaveForm,
+} from "./types";
 
-const RENTAL_ORDER_BASE_URL = "/api/rental/orders";
+const BASE_URL = "/api/rental/order";
 
-const RentalOrderAPI = {
+const OrderAPI = {
   /**
-   * 获取租赁订单分页数据
+     * 获取订单表分页数据
    */
-  getPage(queryParams?: RentalOrderQuery) {
-    return request<unknown, Pagination<RentalOrderItem>>({
-      url: RENTAL_ORDER_BASE_URL,
+  getPage(queryParams?: OrderQuery) {
+    return request<unknown, Pagination<OrderItem>>({
+      url: BASE_URL,
       method: "get",
       params: queryParams,
     });
   },
+
   /**
-   * 获取租赁订单表单数据
+     * 主表详情
    */
-  getFormData(orderId: string) {
-    return request<unknown, RentalOrderForm>({
-      url: `${RENTAL_ORDER_BASE_URL}/${orderId}/form`,
+  getDetail(id: string | number) {
+    return request<unknown, OrderDetail>({
+      url: `${BASE_URL}/${id}`,
       method: "get",
     });
   },
+
   /**
-   * 新增租赁订单
+     * 新增（仅主表）
    */
-  create(data: RentalOrderForm) {
-    return request<unknown, string>({ url: RENTAL_ORDER_BASE_URL, method: "post", data });
+  create(data: OrderSaveForm) {
+    return request<unknown, string | number>({
+      url: BASE_URL,
+      method: "post",
+      data,
+    });
   },
+
   /**
-   * 修改租赁订单
+     * 修改（仅主表）
    */
-  update(orderId: string, data: RentalOrderForm) {
-    return request({ url: `${RENTAL_ORDER_BASE_URL}/${orderId}`, method: "put", data });
+  update(id: string | number, data: OrderSaveForm) {
+    return request({
+      url: `${BASE_URL}/${id}`,
+      method: "put",
+      data,
+    });
   },
+
   /**
-   * 删除租赁订单
+     * 删除（仅主表）
    */
-  deleteById(orderId: string) {
-    return request({ url: `${RENTAL_ORDER_BASE_URL}/${orderId}`, method: "delete" });
+  remove(id: string | number) {
+    return request({
+      url: `${BASE_URL}/${id}`,
+      method: "delete",
+    });
   },
 };
 
-export default RentalOrderAPI;
+export default OrderAPI;
 
 export * from "./types";

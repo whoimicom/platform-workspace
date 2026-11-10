@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 代码生成：库内表列表、生成配置维护、代码预览、类型映射维护。
+ * 代码生成：库内表列表、多表生成配置维护、代码预览。
  */
 @RestController
 @RequestMapping("/api/gen")
@@ -34,6 +34,13 @@ public class GenController {
         return ResultInfo.ok(genService.dbTables(query));
     }
 
+    /** 指定表的字段列表，供前端选择关联列 */
+    @GetMapping("/db-tables/{tableName}/columns")
+    @PreAuthorize("@perm.has('gen:config:list')")
+    public ResultInfo<List<GenDtos.DbColumnItem>> dbColumns(@PathVariable String tableName) {
+        return ResultInfo.ok(genService.dbColumns(tableName));
+    }
+
     /** 已保存的生成配置 */
     @GetMapping("/configs")
     @PreAuthorize("@perm.has('gen:config:list')")
@@ -41,14 +48,14 @@ public class GenController {
         return ResultInfo.ok(genService.configs(query));
     }
 
-    /** 导入表：首次导入生成默认配置，重复导入返回已有配置 */
-    @PostMapping("/configs/import/{tableName}")
+    /** 导入多张表：首次导入按表结构生成默认配置，重复导入返回已有配置 */
+    @PostMapping("/configs")
     @PreAuthorize("@perm.has('gen:config:import')")
-    public ResultInfo<Long> importTable(@PathVariable String tableName) {
-        return ResultInfo.ok(genService.importTable(tableName));
+    public ResultInfo<Long> importConfig(@RequestBody GenDtos.GenImportForm form) {
+        return ResultInfo.ok(genService.importConfig(form));
     }
 
-    /** 配置详情（含字段规则） */
+    /** 配置详情（含关联表与字段规则） */
     @GetMapping("/configs/{id}")
     @PreAuthorize("@perm.has('gen:config:list')")
     public ResultInfo<GenDtos.GenConfigDetail> detail(@PathVariable long id) {
@@ -76,5 +83,12 @@ public class GenController {
     @PreAuthorize("@perm.has('gen:config:preview')")
     public ResultInfo<List<GenDtos.GenFileItem>> preview(@PathVariable long id) {
         return ResultInfo.ok(genService.preview(id));
+    }
+
+    /** 生成代码并直接写入项目目录（覆盖同路径文件） */
+    @PostMapping("/configs/{id}/generate")
+    @PreAuthorize("@perm.has('gen:config:generate')")
+    public ResultInfo<List<String>> generate(@PathVariable long id) {
+        return ResultInfo.ok(genService.generateToProject(id));
     }
 }
