@@ -7,16 +7,12 @@ import org.springframework.data.domain.Page;
 import com.platform.api.common.query.DynamicQueryExecutor;
 import com.platform.api.common.query.RawCondition;
 import com.platform.api.security.LoginUser;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,10 +48,14 @@ public class NoticeService {
 
     private final NamedParameterJdbcTemplate jdbc;
     private final DynamicQueryExecutor executor;
+    private final SysNoticeRepository noticeRepository;
 
-    public NoticeService(NamedParameterJdbcTemplate jdbc, DynamicQueryExecutor executor) {
+    public NoticeService(NamedParameterJdbcTemplate jdbc,
+                         DynamicQueryExecutor executor,
+                         SysNoticeRepository noticeRepository) {
         this.jdbc = jdbc;
         this.executor = executor;
+        this.noticeRepository = noticeRepository;
     }
 
     /**
@@ -86,12 +86,14 @@ public class NoticeService {
     }
 
     public NoticeDtos.NoticeForm form(Long id) {
-        Map<String, Object> row = loadRow(id);
-        List<Long> targetUsers = parseTargetUsers((String) row.get("target_user_ids"));
-        return new NoticeDtos.NoticeForm(String.valueOf(id), (String) row.get("title"),
-                (String) row.get("content"), toInteger(row.get("type"), 1),
-                (String) row.get("level"), toInteger(row.get("publish_status"), STATUS_DRAFT),
-                toInteger(row.get("target_type"), TARGET_ALL), targetUsers, targetUsers);
+        SysNotice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("通知不存在"));
+        List<Long> targetUsers = parseTargetUsers(notice.getTargetUserIds());
+        return new NoticeDtos.NoticeForm(String.valueOf(id), notice.getTitle(), notice.getContent(),
+                notice.getType() == null ? 1 : notice.getType(), notice.getLevel(),
+                notice.getPublishStatus() == null ? STATUS_DRAFT : notice.getPublishStatus(),
+                notice.getTargetType() == null ? TARGET_ALL : notice.getTargetType(),
+                targetUsers, targetUsers);
     }
 
     /**
@@ -136,47 +138,38 @@ public class NoticeService {
     public void create(NoticeDtos.NoticeForm form, LoginUser loginUser) {
         validate(form);
         List<Long> targets = resolveTargets(form);
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("title", form.title().trim());
-        params.addValue("content", form.content());
-        params.addValue("type", form.type());
-        params.addValue("level", form.level() == null || form.level().isBlank() ? "L" : form.level());
-        params.addValue("publishStatus", STATUS_DRAFT);
-        params.addValue("targetType", form.targetType() == null ? TARGET_ALL : form.targetType());
-        params.addValue("targetUserIds", toCsv(targets));
-        params.addValue("publisherId", currentUserId(loginUser));
-        params.addValue("createTime", LocalDateTime.now());
-        params.addValue("updateTime", LocalDateTime.now());
-
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update("INSERT INTO sys_notice (title, content, type, level, publish_status, target_type, "
-                        + "target_user_ids, publisher_id, create_time, update_time) "
-                        + "VALUES (:title, :content, :type, :level, :publishStatus, :targetType, "
-                        + ":targetUserIds, :publisherId, :createTime, :updateTime)",
-                params, keyHolder, new String[]{"id"});
+        SysNotice notice = new SysNotice();
+        notice.setTitle(form.title().trim());
+        notice.setContent(form.content());
+        notice.setType(form.type());
+        notice.setLevel(form.level() == null || form.level().isBlank() ? "L" : form.level());
+        notice.setPublishStatus(STATUS_DRAFT);
+        notice.setTargetType(form.targetType() == null ? TARGET_ALL : form.targetType());
+        notice.setTargetUserIds(toCsv(targets));
+        notice.setPublisherId(currentUserId(loginUser));
+        LocalDateTime now = LocalDateTime.now();
+        notice.setCreateTime(now);
+        notice.setUpdateTime(now);
+        noticeRepository.save(notice);
     }
 
     @Transactional
     public void update(Long id, NoticeDtos.NoticeForm form) {
-        Map<String, Object> row = loadRow(id);
-        if (toInteger(row.get("publish_status"), STATUS_DRAFT) == STATUS_PUBLISHED) {
+        SysNotice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("通知不存在"));
+        if (notice.getPublishStatus() != null && notice.getPublishStatus() == STATUS_PUBLISHED) {
             throw BusinessException.badRequest("已发布的通知不可编辑，请先撤回");
         }
         validate(form);
         List<Long> targets = resolveTargets(form);
-
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("id", id);
-        params.addValue("title", form.title().trim());
-        params.addValue("content", form.content());
-        params.addValue("type", form.type());
-        params.addValue("level", form.level() == null || form.level().isBlank() ? "L" : form.level());
-        params.addValue("targetType", form.targetType() == null ? TARGET_ALL : form.targetType());
-        params.addValue("targetUserIds", toCsv(targets));
-        params.addValue("updateTime", LocalDateTime.now());
-        jdbc.update("UPDATE sys_notice SET title = :title, content = :content, type = :type, level = :level, "
-                + "target_type = :targetType, target_user_ids = :targetUserIds, update_time = :updateTime "
-                + "WHERE id = :id", params);
+        notice.setTitle(form.title().trim());
+        notice.setContent(form.content());
+        notice.setType(form.type());
+        notice.setLevel(form.level() == null || form.level().isBlank() ? "L" : form.level());
+        notice.setTargetType(form.targetType() == null ? TARGET_ALL : form.targetType());
+        notice.setTargetUserIds(toCsv(targets));
+        notice.setUpdateTime(LocalDateTime.now());
+        noticeRepository.save(notice);
     }
 
     @Transactional
@@ -185,46 +178,40 @@ public class NoticeService {
         if (noticeIds.isEmpty()) {
             throw BusinessException.badRequest("请选择要删除的通知");
         }
-        Long published = jdbc.queryForObject("SELECT COUNT(*) FROM sys_notice "
-                        + "WHERE id IN (:ids) AND publish_status = :publishStatus",
-                Map.of("ids", noticeIds, "publishStatus", STATUS_PUBLISHED), Long.class);
-        if (published != null && published > 0) {
+        if (noticeRepository.countByIdInAndPublishStatus(noticeIds, STATUS_PUBLISHED) > 0) {
             throw BusinessException.badRequest("已发布的通知不可删除，请先撤回");
         }
+        // sys_notice_read 为复合主键关联表，保留 SQL 删除
         jdbc.update("DELETE FROM sys_notice_read WHERE notice_id IN (:ids)", Map.of("ids", noticeIds));
-        jdbc.update("DELETE FROM sys_notice WHERE id IN (:ids)", Map.of("ids", noticeIds));
+        noticeRepository.deleteAllById(noticeIds);
     }
 
     @Transactional
     public void publish(Long id, LoginUser loginUser) {
-        Map<String, Object> row = loadRow(id);
-        if (toInteger(row.get("publish_status"), STATUS_DRAFT) == STATUS_PUBLISHED) {
+        SysNotice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("通知不存在"));
+        if (notice.getPublishStatus() != null && notice.getPublishStatus() == STATUS_PUBLISHED) {
             throw BusinessException.badRequest("通知已发布");
         }
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("id", id);
-        params.addValue("publisherId", currentUserId(loginUser));
-        params.addValue("publishTime", LocalDateTime.now());
-        params.addValue("updateTime", LocalDateTime.now());
-        jdbc.update("UPDATE sys_notice SET publish_status = :publishStatus, publisher_id = :publisherId, "
-                + "publish_time = :publishTime, revoke_time = NULL, update_time = :updateTime "
-                + "WHERE id = :id",
-                params.addValue("publishStatus", STATUS_PUBLISHED));
+        notice.setPublishStatus(STATUS_PUBLISHED);
+        notice.setPublisherId(currentUserId(loginUser));
+        notice.setPublishTime(LocalDateTime.now());
+        notice.setRevokeTime(null);
+        notice.setUpdateTime(LocalDateTime.now());
+        noticeRepository.save(notice);
     }
 
     @Transactional
     public void revoke(Long id) {
-        Map<String, Object> row = loadRow(id);
-        if (toInteger(row.get("publish_status"), STATUS_DRAFT) != STATUS_PUBLISHED) {
+        SysNotice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("通知不存在"));
+        if (notice.getPublishStatus() == null || notice.getPublishStatus() != STATUS_PUBLISHED) {
             throw BusinessException.badRequest("仅已发布的通知可撤回");
         }
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("id", id);
-        params.addValue("revokeTime", LocalDateTime.now());
-        params.addValue("updateTime", LocalDateTime.now());
-        jdbc.update("UPDATE sys_notice SET publish_status = :publishStatus, revoke_time = :revokeTime, "
-                + "update_time = :updateTime WHERE id = :id",
-                params.addValue("publishStatus", STATUS_REVOKED));
+        notice.setPublishStatus(STATUS_REVOKED);
+        notice.setRevokeTime(LocalDateTime.now());
+        notice.setUpdateTime(LocalDateTime.now());
+        noticeRepository.save(notice);
     }
 
     /**

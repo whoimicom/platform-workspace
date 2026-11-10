@@ -2,14 +2,10 @@ package com.platform.api.system.menu;
 
 import com.platform.api.common.BusinessException;
 import com.platform.api.common.IdUtils;
-import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
 import com.platform.api.security.LoginUser;
 import com.platform.api.system.org.OrgScope;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,10 +28,12 @@ public class MenuService {
 
     private final NamedParameterJdbcTemplate jdbc;
     private final OrgScope orgScope;
+    private final SysMenuRepository menuRepository;
 
-    public MenuService(NamedParameterJdbcTemplate jdbc, OrgScope orgScope) {
+    public MenuService(NamedParameterJdbcTemplate jdbc, OrgScope orgScope, SysMenuRepository menuRepository) {
         this.jdbc = jdbc;
         this.orgScope = orgScope;
+        this.menuRepository = menuRepository;
     }
 
     public List<MenuDtos.MenuItem> tree(String keywords, LoginUser loginUser) {
@@ -67,14 +65,17 @@ public class MenuService {
     }
 
     public MenuDtos.MenuForm form(Long id, LoginUser loginUser) {
-        MenuRow row = loadRows().stream().filter(item -> item.id() == id).findFirst()
+        SysMenu menu = menuRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound("菜单不存在"));
-        checkScope(loginUser, row.orgId());
-        List<MenuDtos.ParamItem> params = parseParams(row.params());
-        return new MenuDtos.MenuForm(String.valueOf(row.id()), String.valueOf(row.parentId()),
-                row.name(), row.type(), row.path(), row.path(), row.routeName(), row.redirect(),
-                row.component(), row.externalUrl(), row.icon(), row.sort(), row.visible(), row.scope(),
-                row.keepAlive(), row.perm(), params, null, null, String.valueOf(row.orgId()));
+        long orgId = menu.getOrgId() == null ? 0L : menu.getOrgId();
+        checkScope(loginUser, orgId);
+        List<MenuDtos.ParamItem> params = parseParams(menu.getParams());
+        return new MenuDtos.MenuForm(String.valueOf(menu.getId()),
+                String.valueOf(menu.getParentId() == null ? 0L : menu.getParentId()),
+                menu.getName(), menu.getType(), menu.getPath(), menu.getPath(), menu.getRouteName(),
+                menu.getRedirect(), menu.getComponent(), menu.getExternalUrl(), menu.getIcon(),
+                menu.getSort(), menu.getVisible(), menu.getScope(), menu.getKeepAlive(), menu.getPerm(),
+                params, null, null, String.valueOf(orgId));
     }
 
     @Transactional
@@ -120,32 +121,26 @@ public class MenuService {
         }
         long orgId = resolveOrgId(form, loginUser);
 
-        String type = form.type().trim().toUpperCase();
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("parentId", parentId);
-        params.addValue("name", form.name().trim());
-        params.addValue("type", type);
-        params.addValue("path", resolvePath(form));
-        params.addValue("routeName", form.routeName());
-        params.addValue("redirect", form.redirect());
-        params.addValue("component", form.component());
-        params.addValue("externalUrl", form.externalUrl());
-        params.addValue("icon", form.icon());
-        params.addValue("sort", form.sort() == null ? current.sort() : form.sort());
-        params.addValue("visible", form.visible() == null ? current.visible() : form.visible());
-        params.addValue("scope", form.scope() == null ? current.scope() : form.scope());
-        params.addValue("keepAlive", form.keepAlive());
-        params.addValue("perm", form.perm());
-        params.addValue("params", serializeParams(form.params()));
-        params.addValue("orgId", orgId);
-        params.addValue("updateTime", LocalDateTime.now());
-        params.addValue("id", id);
-
-        jdbc.update("UPDATE sys_menu SET parent_id = :parentId, name = :name, type = :type, path = :path, "
-                + "route_name = :routeName, redirect = :redirect, component = :component, "
-                + "external_url = :externalUrl, icon = :icon, sort = :sort, visible = :visible, "
-                + "scope = :scope, keep_alive = :keepAlive, perm = :perm, params = :params, "
-                + "org_id = :orgId, update_time = :updateTime WHERE id = :id", params);
+        SysMenu menu = menuRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("菜单不存在"));
+        menu.setParentId(parentId);
+        menu.setName(form.name().trim());
+        menu.setType(form.type().trim().toUpperCase());
+        menu.setPath(resolvePath(form));
+        menu.setRouteName(form.routeName());
+        menu.setRedirect(form.redirect());
+        menu.setComponent(form.component());
+        menu.setExternalUrl(form.externalUrl());
+        menu.setIcon(form.icon());
+        menu.setSort(form.sort() == null ? current.sort() : form.sort());
+        menu.setVisible(form.visible() == null ? current.visible() : form.visible());
+        menu.setScope(form.scope() == null ? current.scope() : form.scope());
+        menu.setKeepAlive(form.keepAlive());
+        menu.setPerm(form.perm());
+        menu.setParams(serializeParams(form.params()));
+        menu.setOrgId(orgId);
+        menu.setUpdateTime(LocalDateTime.now());
+        menuRepository.save(menu);
     }
 
     @Transactional
@@ -158,7 +153,7 @@ public class MenuService {
         collectSubtree(rows, id, ids);
         jdbc.update("DELETE FROM sys_role_menu WHERE menu_id IN (:ids)", Map.of("ids", ids));
         jdbc.update("DELETE FROM sys_user_menu WHERE menu_id IN (:ids)", Map.of("ids", ids));
-        jdbc.update("DELETE FROM sys_menu WHERE id IN (:ids)", Map.of("ids", ids));
+        menuRepository.deleteAllById(ids);
     }
 
     public List<MenuDtos.RouteItem> routes(LoginUser loginUser) {
@@ -234,34 +229,28 @@ public class MenuService {
                             String redirect, String component, String externalUrl, String icon,
                             Integer sort, Integer visible, Integer scope, Integer keepAlive,
                             String perm, String params, long orgId) {
-        MapSqlParameterSource source = new MapSqlParameterSource();
-        source.addValue("parentId", parentId);
-        source.addValue("name", name);
-        source.addValue("type", type);
-        source.addValue("path", path);
-        source.addValue("routeName", routeName);
-        source.addValue("redirect", redirect);
-        source.addValue("component", component);
-        source.addValue("externalUrl", externalUrl);
-        source.addValue("icon", icon);
-        source.addValue("sort", sort);
-        source.addValue("visible", visible);
-        source.addValue("scope", scope);
-        source.addValue("keepAlive", keepAlive);
-        source.addValue("perm", perm);
-        source.addValue("params", params);
-        source.addValue("orgId", orgId);
-        source.addValue("createTime", LocalDateTime.now());
-        source.addValue("updateTime", LocalDateTime.now());
-
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update("INSERT INTO sys_menu (parent_id, name, type, path, route_name, redirect, component, "
-                        + "external_url, icon, sort, visible, scope, keep_alive, perm, params, org_id, create_time, update_time) "
-                        + "VALUES (:parentId, :name, :type, :path, :routeName, :redirect, :component, "
-                        + ":externalUrl, :icon, :sort, :visible, :scope, :keepAlive, :perm, :params, "
-                        + ":orgId, :createTime, :updateTime)", source, keyHolder, new String[]{"id"});
-        Number key = keyHolder.getKey();
-        return key == null ? 0L : key.longValue();
+        SysMenu menu = new SysMenu();
+        menu.setParentId(parentId);
+        menu.setName(name);
+        menu.setType(type);
+        menu.setPath(path);
+        menu.setRouteName(routeName);
+        menu.setRedirect(redirect);
+        menu.setComponent(component);
+        menu.setExternalUrl(externalUrl);
+        menu.setIcon(icon);
+        menu.setSort(sort);
+        menu.setVisible(visible);
+        menu.setScope(scope);
+        menu.setKeepAlive(keepAlive);
+        menu.setPerm(perm);
+        menu.setParams(params);
+        menu.setOrgId(orgId);
+        LocalDateTime now = LocalDateTime.now();
+        menu.setCreateTime(now);
+        menu.setUpdateTime(now);
+        SysMenu saved = menuRepository.save(menu);
+        return saved.getId() == null ? 0L : saved.getId();
     }
 
     private String resolvePath(MenuDtos.MenuForm form) {
@@ -283,9 +272,7 @@ public class MenuService {
         if (parentId == 0L) {
             return;
         }
-        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_menu WHERE id = :id",
-                Map.of("id", parentId), Long.class);
-        if (count == null || count == 0) {
+        if (!menuRepository.existsById(parentId)) {
             throw BusinessException.badRequest("上级菜单不存在");
         }
     }
@@ -416,27 +403,19 @@ public class MenuService {
     }
 
     private List<MenuRow> loadRows() {
-        return jdbc.query("SELECT id, parent_id, name, type, path, route_name, redirect, component, "
-                        + "external_url, icon, sort, visible, scope, keep_alive, params, perm, org_id FROM sys_menu "
-                        + "ORDER BY sort ASC, id ASC",
-                new HashMap<>(), (rs, rowNum) -> new MenuRow(
-                        rs.getLong("id"),
-                        rs.getLong("parent_id"),
-                        rs.getString("name"),
-                        rs.getString("type"),
-                        rs.getString("path"),
-                        rs.getString("route_name"),
-                        rs.getString("redirect"),
-                        rs.getString("component"),
-                        rs.getString("external_url"),
-                        rs.getString("icon"),
-                        JdbcUtil.getInt(rs, "sort"),
-                        JdbcUtil.getInt(rs, "visible"),
-                        JdbcUtil.getInt(rs, "scope"),
-                        JdbcUtil.getInt(rs, "keep_alive"),
-                        rs.getString("params"),
-                        rs.getString("perm"),
-                        rs.getLong("org_id")));
+        List<SysMenu> entities = new ArrayList<>();
+        menuRepository.findAll().forEach(entities::add);
+        entities.sort(Comparator.comparing((SysMenu menu) -> menu.getSort() == null ? 0 : menu.getSort())
+                .thenComparing(SysMenu::getId));
+        return entities.stream().map(MenuService::toRow).toList();
+    }
+
+    private static MenuRow toRow(SysMenu menu) {
+        return new MenuRow(menu.getId(), menu.getParentId() == null ? 0L : menu.getParentId(),
+                menu.getName(), menu.getType(), menu.getPath(), menu.getRouteName(), menu.getRedirect(),
+                menu.getComponent(), menu.getExternalUrl(), menu.getIcon(), menu.getSort(), menu.getVisible(),
+                menu.getScope(), menu.getKeepAlive(), menu.getParams(), menu.getPerm(),
+                menu.getOrgId() == null ? 0L : menu.getOrgId());
     }
 
     private record MenuRow(long id, long parentId, String name, String type, String path,

@@ -8,10 +8,7 @@ import org.springframework.data.domain.Page;
 import com.platform.api.common.query.DynamicQueryExecutor;
 import com.platform.api.common.query.RawCondition;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,10 +50,14 @@ public class RoleService {
 
     private final NamedParameterJdbcTemplate jdbc;
     private final DynamicQueryExecutor executor;
+    private final SysRoleRepository roleRepository;
 
-    public RoleService(NamedParameterJdbcTemplate jdbc, DynamicQueryExecutor executor) {
+    public RoleService(NamedParameterJdbcTemplate jdbc,
+                       DynamicQueryExecutor executor,
+                       SysRoleRepository roleRepository) {
         this.jdbc = jdbc;
         this.executor = executor;
+        this.roleRepository = roleRepository;
     }
 
     public Page<RoleDtos.RoleItem> page(RoleDtos.RoleQuery query) {
@@ -69,36 +70,33 @@ public class RoleService {
     }
 
     public List<OptionItem> options() {
-        return jdbc.query("SELECT id, name FROM sys_role WHERE status = 1 ORDER BY sort ASC, id ASC",
-                new HashMap<>(), (rs, rowNum) -> new OptionItem(
-                        String.valueOf(rs.getLong("id")), rs.getString("name")));
+        List<SysRole> roles = loadActiveRoles();
+        return roles.stream().map(role -> new OptionItem(
+                String.valueOf(role.getId()), role.getName())).toList();
     }
 
     public List<OptionItem> codeOptions() {
-        return jdbc.query("SELECT code, name FROM sys_role WHERE status = 1 ORDER BY sort ASC, id ASC",
-                new HashMap<>(), (rs, rowNum) -> new OptionItem(
-                        rs.getString("code"), rs.getString("name")));
+        List<SysRole> roles = loadActiveRoles();
+        return roles.stream().map(role -> new OptionItem(role.getCode(), role.getName())).toList();
+    }
+
+    /** 启用中的角色，按 sort、id 排序 */
+    private List<SysRole> loadActiveRoles() {
+        List<SysRole> roles = new ArrayList<>();
+        roleRepository.findAll().forEach(roles::add);
+        roles.sort(java.util.Comparator
+                .comparing((SysRole role) -> role.getSort() == null ? 0 : role.getSort())
+                .thenComparing(SysRole::getId));
+        return roles.stream()
+                .filter(role -> role.getStatus() != null && role.getStatus() == 1)
+                .toList();
     }
 
     public RoleDtos.RoleForm form(Long id) {
-        List<RoleDtos.RoleForm> rows = jdbc.query(
-                "SELECT id, code, name, sort, status, data_scope, remark FROM sys_role WHERE id = :id",
-                Map.of("id", id),
-                (rs, rowNum) -> new RoleDtos.RoleForm(
-                        String.valueOf(rs.getLong("id")),
-                        rs.getString("code"),
-                        rs.getString("name"),
-                        JdbcUtil.getInt(rs, "sort"),
-                        JdbcUtil.getInt(rs, "status"),
-                        JdbcUtil.getInt(rs, "data_scope"),
-                        new ArrayList<>(),
-                        rs.getString("remark")));
-        if (rows.isEmpty()) {
-            throw BusinessException.notFound("角色不存在");
-        }
-        RoleDtos.RoleForm role = rows.get(0);
-        return new RoleDtos.RoleForm(role.id(), role.code(), role.name(), role.sort(), role.status(),
-                role.dataScope(), orgIds(id), role.remark());
+        SysRole role = roleRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("角色不存在"));
+        return new RoleDtos.RoleForm(String.valueOf(role.getId()), role.getCode(), role.getName(),
+                role.getSort(), role.getStatus(), role.getDataScope(), orgIds(id), role.getRemark());
     }
 
     public List<String> menuIds(Long roleId) {
@@ -118,34 +116,35 @@ public class RoleService {
         validate(form);
         ensureCodeUnique(form.code(), null);
 
-        MapSqlParameterSource params = roleParams(form);
-        params.addValue("createTime", LocalDateTime.now());
-        params.addValue("updateTime", LocalDateTime.now());
-
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update("INSERT INTO sys_role (code, name, sort, status, data_scope, remark, create_time, update_time) "
-                        + "VALUES (:code, :name, :sort, :status, :dataScope, :remark, :createTime, :updateTime)",
-                params, keyHolder, new String[]{"id"});
-
-        Number key = keyHolder.getKey();
-        if (key != null) {
-            replaceOrgs(key.longValue(), form);
-        }
+        SysRole role = new SysRole();
+        role.setCode(form.code() == null ? null : form.code().trim());
+        role.setName(form.name() == null ? null : form.name().trim());
+        role.setSort(form.sort() == null ? 1 : form.sort());
+        role.setStatus(form.status() == null ? 1 : form.status());
+        role.setDataScope(form.dataScope() == null ? 1 : form.dataScope());
+        role.setRemark(form.remark());
+        LocalDateTime now = LocalDateTime.now();
+        role.setCreateTime(now);
+        role.setUpdateTime(now);
+        SysRole saved = roleRepository.save(role);
+        replaceOrgs(saved.getId(), form);
     }
 
     @Transactional
     public void update(Long id, RoleDtos.RoleForm form) {
-        if (!exists(id)) {
-            throw BusinessException.notFound("角色不存在");
-        }
+        SysRole role = roleRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("角色不存在"));
         validate(form);
         ensureCodeUnique(form.code(), id);
 
-        MapSqlParameterSource params = roleParams(form);
-        params.addValue("updateTime", LocalDateTime.now());
-        params.addValue("id", id);
-        jdbc.update("UPDATE sys_role SET code = :code, name = :name, sort = :sort, status = :status, "
-                + "data_scope = :dataScope, remark = :remark, update_time = :updateTime WHERE id = :id", params);
+        role.setCode(form.code() == null ? null : form.code().trim());
+        role.setName(form.name() == null ? null : form.name().trim());
+        role.setSort(form.sort() == null ? 1 : form.sort());
+        role.setStatus(form.status() == null ? 1 : form.status());
+        role.setDataScope(form.dataScope() == null ? 1 : form.dataScope());
+        role.setRemark(form.remark());
+        role.setUpdateTime(LocalDateTime.now());
+        roleRepository.save(role);
         replaceOrgs(id, form);
     }
 
@@ -159,12 +158,12 @@ public class RoleService {
         jdbc.update("DELETE FROM sys_user_role WHERE role_id IN (:ids)", params);
         jdbc.update("DELETE FROM sys_role_menu WHERE role_id IN (:ids)", params);
         jdbc.update("DELETE FROM sys_role_org WHERE role_id IN (:ids)", params);
-        jdbc.update("DELETE FROM sys_role WHERE id IN (:ids)", params);
+        roleRepository.deleteAllById(idList);
     }
 
     @Transactional
     public void updateMenus(Long roleId, List<Long> menuIds) {
-        if (!exists(roleId)) {
+        if (!roleRepository.existsById(roleId)) {
             throw BusinessException.notFound("角色不存在");
         }
         jdbc.update("DELETE FROM sys_role_menu WHERE role_id = :roleId", Map.of("roleId", roleId));
@@ -190,17 +189,6 @@ public class RoleService {
         }
     }
 
-    private MapSqlParameterSource roleParams(RoleDtos.RoleForm form) {
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("code", form.code() == null ? null : form.code().trim());
-        params.addValue("name", form.name() == null ? null : form.name().trim());
-        params.addValue("sort", form.sort() == null ? 1 : form.sort());
-        params.addValue("status", form.status() == null ? 1 : form.status());
-        params.addValue("dataScope", form.dataScope() == null ? 1 : form.dataScope());
-        params.addValue("remark", form.remark());
-        return params;
-    }
-
     private void validate(RoleDtos.RoleForm form) {
         if (form.code() == null || form.code().isBlank()) {
             throw BusinessException.badRequest("角色编码不能为空");
@@ -211,22 +199,10 @@ public class RoleService {
     }
 
     private void ensureCodeUnique(String code, Long excludeId) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("code", code.trim());
-        String sql = "SELECT COUNT(*) FROM sys_role WHERE code = :code";
-        if (excludeId != null) {
-            sql += " AND id <> :excludeId";
-            params.put("excludeId", excludeId);
-        }
-        Long count = jdbc.queryForObject(sql, params, Long.class);
-        if (count != null && count > 0) {
+        var existing = roleRepository.findByCode(code.trim());
+        if (existing.isPresent()
+                && (excludeId == null || !existing.get().getId().equals(excludeId))) {
             throw BusinessException.badRequest("角色编码已存在");
         }
-    }
-
-    private boolean exists(Long id) {
-        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_role WHERE id = :id",
-                Map.of("id", id), Long.class);
-        return count != null && count > 0;
     }
 }

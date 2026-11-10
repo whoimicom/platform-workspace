@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -169,25 +168,15 @@ public class UserService {
 
     public UserDtos.UserForm form(Long id, LoginUser loginUser) {
         orgScope.checkUser(loginUser, id);
-        List<FormRow> rows = jdbc.query(
-                "SELECT id, avatar, org_id, email, gender, mobile, nickname, status, username "
-                        + "FROM sys_user WHERE id = :id",
-                Map.of("id", id),
-                (rs, rowNum) -> new FormRow(rs.getLong("id"), rs.getString("avatar"),
-                        JdbcUtil.getLong(rs, "org_id"), rs.getString("email"),
-                        JdbcUtil.getInt(rs, "gender"), rs.getString("mobile"),
-                        rs.getString("nickname"), JdbcUtil.getInt(rs, "status"),
-                        rs.getString("username")));
-        if (rows.isEmpty()) {
-            throw BusinessException.notFound("用户不存在");
-        }
-        FormRow row = rows.get(0);
+        SysUser user = userRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("用户不存在"));
         List<String> roleIds = jdbc.queryForList(
                         "SELECT role_id FROM sys_user_role WHERE user_id = :id", Map.of("id", id), Long.class)
                 .stream().map(String::valueOf).toList();
-        return new UserDtos.UserForm(String.valueOf(row.id()), row.avatar(),
-                row.orgId() == null ? null : String.valueOf(row.orgId()),
-                row.email(), row.gender(), row.mobile(), row.nickname(), roleIds, row.status(), row.username());
+        return new UserDtos.UserForm(String.valueOf(user.getId()), user.getAvatar(),
+                user.getOrgId() == null ? null : String.valueOf(user.getOrgId()),
+                user.getEmail(), user.getGender(), user.getMobile(), user.getNickname(),
+                roleIds, user.getStatus(), user.getUsername());
     }
 
     public void create(UserDtos.UserForm form, LoginUser loginUser) {
@@ -269,21 +258,16 @@ public class UserService {
         }
         String mobile = validateMobile(form.mobile(), id);
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("username", username);
-        params.put("nickname", form.nickname());
-        params.put("avatar", form.avatar());
-        params.put("gender", form.gender() == null ? existing.getGender() : form.gender());
-        params.put("mobile", mobile);
-        params.put("email", form.email());
-        params.put("status", form.status() == null ? existing.getStatus() : form.status());
-        params.put("orgId", orgId);
-        params.put("updateTime", LocalDateTime.now());
-        params.put("id", id);
-
-        jdbc.update("UPDATE sys_user SET username = :username, nickname = :nickname, avatar = :avatar, "
-                + "gender = :gender, mobile = :mobile, email = :email, status = :status, "
-                + "org_id = :orgId, update_time = :updateTime WHERE id = :id", params);
+        existing.setUsername(username);
+        existing.setNickname(form.nickname());
+        existing.setAvatar(form.avatar());
+        existing.setGender(form.gender() == null ? existing.getGender() : form.gender());
+        existing.setMobile(mobile);
+        existing.setEmail(form.email());
+        existing.setStatus(form.status() == null ? existing.getStatus() : form.status());
+        existing.setOrgId(orgId);
+        existing.setUpdateTime(LocalDateTime.now());
+        userRepository.save(existing);
         replaceRoles(id, form.roleIds());
     }
 
@@ -292,14 +276,11 @@ public class UserService {
         if (status == null || status != 0 && status != 1) {
             throw BusinessException.badRequest("用户状态不合法");
         }
-        if (!userRepository.existsById(id)) {
-            throw BusinessException.notFound("用户不存在");
-        }
-        Map<String, Object> params = new HashMap<>();
-        params.put("status", status);
-        params.put("updateTime", LocalDateTime.now());
-        params.put("id", id);
-        jdbc.update("UPDATE sys_user SET status = :status, update_time = :updateTime WHERE id = :id", params);
+        SysUser user = userRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("用户不存在"));
+        user.setStatus(status);
+        user.setUpdateTime(LocalDateTime.now());
+        userRepository.save(user);
     }
 
     public void resetPassword(Long id, String password, LoginUser loginUser) {
@@ -307,14 +288,11 @@ public class UserService {
         if (password == null || password.isBlank() || password.trim().length() < 6) {
             throw BusinessException.badRequest("密码长度不能少于6位");
         }
-        if (!userRepository.existsById(id)) {
-            throw BusinessException.notFound("用户不存在");
-        }
-        Map<String, Object> params = new HashMap<>();
-        params.put("password", passwordEncoder.encode(password.trim()));
-        params.put("updateTime", LocalDateTime.now());
-        params.put("id", id);
-        jdbc.update("UPDATE sys_user SET password = :password, update_time = :updateTime WHERE id = :id", params);
+        SysUser user = userRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("用户不存在"));
+        user.setPassword(passwordEncoder.encode(password.trim()));
+        user.setUpdateTime(LocalDateTime.now());
+        userRepository.save(user);
     }
 
     /**
@@ -393,13 +371,15 @@ public class UserService {
         Map<String, Object> params = Map.of("ids", idList);
         jdbc.update("DELETE FROM sys_user_role WHERE user_id IN (:ids)", params);
         jdbc.update("DELETE FROM sys_user_menu WHERE user_id IN (:ids)", params);
-        jdbc.update("DELETE FROM sys_user WHERE id IN (:ids)", params);
+        userRepository.deleteAllById(idList);
     }
 
     public List<OptionItem> options() {
-        return jdbc.query("SELECT id, nickname FROM sys_user ORDER BY id ASC",
-                new HashMap<>(), (rs, rowNum) -> new OptionItem(
-                        String.valueOf(rs.getLong("id")), rs.getString("nickname")));
+        List<SysUser> users = new ArrayList<>();
+        userRepository.findAll().forEach(users::add);
+        users.sort(java.util.Comparator.comparing(SysUser::getId));
+        return users.stream().map(user -> new OptionItem(
+                String.valueOf(user.getId()), user.getNickname())).toList();
     }
 
     private void replaceRoles(Long userId, List<String> roleIds) {
@@ -427,9 +407,5 @@ public class UserService {
             throw BusinessException.badRequest("请选择所属架构");
         }
         orgScope.check(loginUser, orgId);
-    }
-
-    private record FormRow(Long id, String avatar, Long orgId, String email, Integer gender,
-                           String mobile, String nickname, Integer status, String username) {
     }
 }

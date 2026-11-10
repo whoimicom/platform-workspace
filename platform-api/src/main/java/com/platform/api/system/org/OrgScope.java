@@ -2,19 +2,21 @@ package com.platform.api.system.org;
 
 import com.platform.api.common.BusinessException;
 import com.platform.api.security.LoginUser;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import com.platform.api.system.user.SysUser;
+import com.platform.api.system.user.SysUserRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 架构数据权限：非 ROOT 用户对「用户管理 / 菜单管理 / 架构管理」的增删改查
  * 仅能作用于自己所在架构节点及其子树。
- * 子树匹配基于 sys_org.tree_path（逗号分隔的祖先链）前缀，单条 SQL 即可完成过滤，
- * 避免递归查询。
+ * 子树匹配基于 sys_org.tree_path（逗号分隔的祖先链）前缀，实体加载 + 内存过滤完成。
  */
 @Component
 public class OrgScope {
@@ -28,10 +30,12 @@ public class OrgScope {
     /** 用户未挂架构时返回一个匹配不到任何节点的范围。 */
     private static final Scope EMPTY = new Scope(-1L, "-1");
 
-    private final NamedParameterJdbcTemplate jdbc;
+    private final SysOrgRepository orgRepository;
+    private final SysUserRepository userRepository;
 
-    public OrgScope(NamedParameterJdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public OrgScope(SysOrgRepository orgRepository, SysUserRepository userRepository) {
+        this.orgRepository = orgRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -41,31 +45,15 @@ public class OrgScope {
         if (user == null || user.isRoot()) {
             return null;
         }
-        List<Long> orgIds = jdbc.queryForList(
-                "SELECT org_id FROM sys_user WHERE id = :userId",
-                Map.of("userId", user.userId()), Long.class);
-        if (orgIds.isEmpty() || orgIds.get(0) == null) {
+        SysUser owner = userRepository.findById(user.userId()).orElse(null);
+        if (owner == null || owner.getOrgId() == null) {
             return EMPTY;
         }
-        Long orgId = orgIds.get(0);
-        List<String> paths = jdbc.queryForList(
-                "SELECT tree_path FROM sys_org WHERE id = :orgId",
-                Map.of("orgId", orgId), String.class);
-        if (paths.isEmpty() || paths.get(0) == null) {
+        SysOrg org = orgRepository.findById(owner.getOrgId()).orElse(null);
+        if (org == null || org.getTreePath() == null) {
             return EMPTY;
         }
-        return new Scope(orgId, paths.get(0));
-    }
-
-    /**
-     * 子树 SQL 片段（命中节点自身及全部后代），参数名固定为 scopeRootId / scopePath。
-     */
-    public String subtreeCondition(String alias) {
-        return "(" + alias + ".id = :scopeRootId OR " + alias + ".tree_path LIKE CONCAT(:scopePath, ',%'))";
-    }
-
-    public Map<String, Object> params(Scope scope) {
-        return Map.of("scopeRootId", scope.rootId(), "scopePath", scope.path());
+        return new Scope(owner.getOrgId(), org.getTreePath());
     }
 
     /**
@@ -78,12 +66,27 @@ public class OrgScope {
         if (orgId == null) {
             return false;
         }
-        Map<String, Object> params = new java.util.HashMap<>(params(scope));
-        params.put("orgId", orgId);
-        Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_org o WHERE o.id = :orgId AND " + subtreeCondition("o"),
-                params, Long.class);
-        return count != null && count > 0;
+        SysOrg org = orgRepository.findById(orgId).orElse(null);
+        if (org == null) {
+            return false;
+        }
+        return scope.rootId().equals(org.getId())
+                || (org.getTreePath() != null && org.getTreePath().startsWith(scope.path() + ","));
+    }
+
+    /**
+     * 子树 SQL 片段（命中节点自身及全部后代），参数名固定为 scopeRootId / scopePath。
+     * 供动态分页查询在 WHERE 子句中做架构过滤使用。
+     */
+    public String subtreeCondition(String alias) {
+        return "(" + alias + ".id = :scopeRootId OR " + alias + ".tree_path LIKE CONCAT(:scopePath, ',%'))";
+    }
+
+    /**
+     * {@link #subtreeCondition(String)} 对应的查询参数。
+     */
+    public Map<String, Object> params(Scope scope) {
+        return Map.of("scopeRootId", scope.rootId(), "scopePath", scope.path());
     }
 
     /**
@@ -106,9 +109,13 @@ public class OrgScope {
         if (scope == null) {
             return null;
         }
-        return new LinkedHashSet<>(jdbc.queryForList(
-                "SELECT o.id FROM sys_org o WHERE " + subtreeCondition("o"),
-                params(scope), Long.class));
+        List<SysOrg> all = new ArrayList<>();
+        orgRepository.findAll().forEach(all::add);
+        return all.stream()
+                .filter(org -> scope.rootId().equals(org.getId())
+                        || (org.getTreePath() != null && org.getTreePath().startsWith(scope.path() + ",")))
+                .map(SysOrg::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -119,12 +126,11 @@ public class OrgScope {
         if (scope == null) {
             return;
         }
-        List<Long> orgIds = jdbc.queryForList(
-                "SELECT org_id FROM sys_user WHERE id = :id", Map.of("id", targetUserId), Long.class);
-        if (orgIds.isEmpty()) {
+        SysUser target = userRepository.findById(targetUserId).orElse(null);
+        if (target == null) {
             throw BusinessException.notFound("用户不存在");
         }
-        if (!contains(scope, orgIds.get(0))) {
+        if (!contains(scope, target.getOrgId())) {
             throw BusinessException.forbidden("无权操作该用户");
         }
     }

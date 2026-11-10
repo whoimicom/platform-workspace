@@ -2,17 +2,16 @@ package com.platform.api.system.org;
 
 import com.platform.api.common.BusinessException;
 import com.platform.api.common.IdUtils;
-import com.platform.api.common.JdbcUtil;
 import com.platform.api.common.OptionItem;
 import com.platform.api.security.LoginUser;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import com.platform.api.system.role.SysRole;
+import com.platform.api.system.user.SysUserRepository;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -22,10 +21,19 @@ import java.util.Map;
 @Service
 public class OrgService {
 
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private final SysOrgRepository orgRepository;
+    private final SysUserRepository userRepository;
     private final NamedParameterJdbcTemplate jdbc;
     private final OrgScope orgScope;
 
-    public OrgService(NamedParameterJdbcTemplate jdbc, OrgScope orgScope) {
+    public OrgService(SysOrgRepository orgRepository,
+                      SysUserRepository userRepository,
+                      NamedParameterJdbcTemplate jdbc,
+                      OrgScope orgScope) {
+        this.orgRepository = orgRepository;
+        this.userRepository = userRepository;
         this.jdbc = jdbc;
         this.orgScope = orgScope;
     }
@@ -70,20 +78,10 @@ public class OrgService {
 
     public OrgDtos.OrgForm form(Long id, LoginUser loginUser) {
         orgScope.check(loginUser, id);
-        List<OrgDtos.OrgForm> rows = jdbc.query(
-                "SELECT id, name, code, parent_id, sort, status FROM sys_org WHERE id = :id",
-                Map.of("id", id),
-                (rs, rowNum) -> new OrgDtos.OrgForm(
-                        String.valueOf(rs.getLong("id")),
-                        rs.getString("name"),
-                        rs.getString("code"),
-                        String.valueOf(rs.getLong("parent_id")),
-                        JdbcUtil.getInt(rs, "sort"),
-                        JdbcUtil.getInt(rs, "status")));
-        if (rows.isEmpty()) {
-            throw BusinessException.notFound("架构不存在");
-        }
-        return rows.get(0);
+        SysOrg org = orgRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("架构不存在"));
+        return new OrgDtos.OrgForm(String.valueOf(org.getId()), org.getName(), org.getCode(),
+                String.valueOf(org.getParentId()), org.getSort(), org.getStatus());
     }
 
     @Transactional
@@ -93,32 +91,24 @@ public class OrgService {
         orgScope.check(loginUser, parentId == 0L ? null : parentId);
         ensureParentExists(parentId);
 
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("parentId", parentId);
-        params.addValue("name", form.name().trim());
-        params.addValue("code", form.code());
-        params.addValue("sort", form.sort() == null ? 1 : form.sort());
-        params.addValue("status", form.status() == null ? 1 : form.status());
-        params.addValue("createTime", LocalDateTime.now());
-        params.addValue("updateTime", LocalDateTime.now());
-
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update("INSERT INTO sys_org (parent_id, name, code, sort, status, create_time, update_time) "
-                        + "VALUES (:parentId, :name, :code, :sort, :status, :createTime, :updateTime)",
-                params, keyHolder, new String[]{"id"});
-
-        Number key = keyHolder.getKey();
-        if (key != null) {
-            updateTreePath(key.longValue());
-        }
+        SysOrg org = new SysOrg();
+        org.setParentId(parentId);
+        org.setName(form.name().trim());
+        org.setCode(form.code());
+        org.setSort(form.sort() == null ? 1 : form.sort());
+        org.setStatus(form.status() == null ? 1 : form.status());
+        LocalDateTime now = LocalDateTime.now();
+        org.setCreateTime(now);
+        org.setUpdateTime(now);
+        SysOrg saved = orgRepository.save(org);
+        updateTreePath(saved.getId());
     }
 
     @Transactional
     public void update(Long id, OrgDtos.OrgForm form, LoginUser loginUser) {
         orgScope.check(loginUser, id);
-        if (!exists(id)) {
-            throw BusinessException.notFound("架构不存在");
-        }
+        SysOrg org = orgRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("架构不存在"));
         validate(form);
         Long parentId = resolveParentId(form.parentId());
         if (parentId == id) {
@@ -127,16 +117,13 @@ public class OrgService {
         orgScope.check(loginUser, parentId == 0L ? null : parentId);
         ensureParentExists(parentId);
 
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("parentId", parentId);
-        params.addValue("name", form.name().trim());
-        params.addValue("code", form.code());
-        params.addValue("sort", form.sort() == null ? 1 : form.sort());
-        params.addValue("status", form.status() == null ? 1 : form.status());
-        params.addValue("updateTime", LocalDateTime.now());
-        params.addValue("id", id);
-        jdbc.update("UPDATE sys_org SET parent_id = :parentId, name = :name, code = :code, "
-                + "sort = :sort, status = :status, update_time = :updateTime WHERE id = :id", params);
+        org.setParentId(parentId);
+        org.setName(form.name().trim());
+        org.setCode(form.code());
+        org.setSort(form.sort() == null ? 1 : form.sort());
+        org.setStatus(form.status() == null ? 1 : form.status());
+        org.setUpdateTime(LocalDateTime.now());
+        orgRepository.save(org);
         updateTreePath(id);
         updateChildTreePaths(id);
     }
@@ -150,37 +137,30 @@ public class OrgService {
         for (Long id : idList) {
             orgScope.check(loginUser, id);
         }
-        Map<String, Object> params = Map.of("ids", idList);
-        Long children = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_org WHERE parent_id IN (:ids)", params, Long.class);
-        if (children != null && children > 0) {
+        if (orgRepository.countByParentIdIn(idList) > 0) {
             throw BusinessException.badRequest("请先删除子架构");
         }
-        Long users = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_user WHERE org_id IN (:ids)", params, Long.class);
-        if (users != null && users > 0) {
+        if (userRepository.countByOrgIdIn(idList) > 0) {
             throw BusinessException.badRequest("架构下存在用户，无法删除");
         }
-        jdbc.update("DELETE FROM sys_role_org WHERE org_id IN (:ids)", params);
-        jdbc.update("DELETE FROM sys_org WHERE id IN (:ids)", params);
+        // sys_role_org 为复合主键关联表，保留 SQL 删除
+        jdbc.update("DELETE FROM sys_role_org WHERE org_id IN (:ids)", Map.of("ids", idList));
+        orgRepository.deleteAllById(idList);
     }
 
     private List<OrgRow> loadRows() {
-        return jdbc.query(
-                "SELECT id, parent_id, name, code, sort, status, tree_path, "
-                        + "DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time, "
-                        + "DATE_FORMAT(update_time, '%Y-%m-%d %H:%i:%s') AS update_time "
-                        + "FROM sys_org ORDER BY sort ASC, id ASC",
-                new HashMap<>(), (rs, rowNum) -> new OrgRow(
-                rs.getLong("id"),
-                rs.getLong("parent_id"),
-                rs.getString("name"),
-                rs.getString("code"),
-                JdbcUtil.getInt(rs, "sort"),
-                JdbcUtil.getInt(rs, "status"),
-                rs.getString("tree_path"),
-                rs.getString("create_time"),
-                rs.getString("update_time")));
+        List<SysOrg> entities = new ArrayList<>();
+        orgRepository.findAll().forEach(entities::add);
+        entities.sort(Comparator.comparing((SysOrg org) -> org.getSort() == null ? 0 : org.getSort())
+                .thenComparing(SysOrg::getId));
+        return entities.stream().map(OrgService::toRow).toList();
+    }
+
+    private static OrgRow toRow(SysOrg org) {
+        return new OrgRow(org.getId(), org.getParentId() == null ? 0L : org.getParentId(),
+                org.getName(), org.getCode(), org.getSort(), org.getStatus(), org.getTreePath(),
+                org.getCreateTime() == null ? null : TIME_FORMAT.format(org.getCreateTime()),
+                org.getUpdateTime() == null ? null : TIME_FORMAT.format(org.getUpdateTime()));
     }
 
     /**
@@ -220,32 +200,28 @@ public class OrgService {
     }
 
     private void updateTreePath(Long id) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT parent_id FROM sys_org WHERE id = :id", Map.of("id", id));
-        if (rows.isEmpty()) {
+        SysOrg org = orgRepository.findById(id).orElse(null);
+        if (org == null) {
             return;
         }
-        Long parentId = ((Number) rows.get(0).get("parent_id")).longValue();
+        Long parentId = org.getParentId() == null ? 0L : org.getParentId();
         String treePath;
         if (parentId == 0L) {
             treePath = String.valueOf(id);
         } else {
-            List<Map<String, Object>> parents = jdbc.queryForList(
-                    "SELECT tree_path FROM sys_org WHERE id = :id", Map.of("id", parentId));
-            String parentPath = parents.isEmpty() || parents.get(0).get("tree_path") == null
-                    ? String.valueOf(parentId) : parents.get(0).get("tree_path").toString();
+            SysOrg parent = orgRepository.findById(parentId).orElse(null);
+            String parentPath = parent == null || parent.getTreePath() == null
+                    ? String.valueOf(parentId) : parent.getTreePath();
             treePath = parentPath + "," + id;
         }
-        jdbc.update("UPDATE sys_org SET tree_path = :treePath WHERE id = :id",
-                Map.of("treePath", treePath, "id", id));
+        org.setTreePath(treePath);
+        orgRepository.save(org);
     }
 
     private void updateChildTreePaths(Long parentId) {
-        List<Long> childIds = jdbc.queryForList(
-                "SELECT id FROM sys_org WHERE parent_id = :parentId", Map.of("parentId", parentId), Long.class);
-        for (Long childId : childIds) {
-            updateTreePath(childId);
-            updateChildTreePaths(childId);
+        for (SysOrg child : orgRepository.findByParentId(parentId)) {
+            updateTreePath(child.getId());
+            updateChildTreePaths(child.getId());
         }
     }
 
@@ -258,15 +234,9 @@ public class OrgService {
         if (parentId == 0L) {
             return;
         }
-        if (!exists(parentId)) {
+        if (!orgRepository.existsById(parentId)) {
             throw BusinessException.badRequest("上级架构不存在");
         }
-    }
-
-    private boolean exists(Long id) {
-        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_org WHERE id = :id",
-                Map.of("id", id), Long.class);
-        return count != null && count > 0;
     }
 
     private void validate(OrgDtos.OrgForm form) {
