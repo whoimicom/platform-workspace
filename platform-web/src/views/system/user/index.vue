@@ -33,9 +33,9 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="创建时间" prop="createTime">
+          <el-form-item label="创建日期" prop="createDate">
             <el-date-picker
-              v-model="params.createTime"
+              v-model="params.createDate"
               :editable="false"
               type="daterange"
               range-separator="~"
@@ -151,7 +151,11 @@
             <el-table-column label="架构" min-width="140" prop="orgName" show-overflow-tooltip />
             <el-table-column label="角色" prop="roleNames" min-width="160" show-overflow-tooltip />
             <el-table-column label="手机号码" prop="mobile" width="130" />
-            <el-table-column label="创建时间" prop="createTime" width="160" show-overflow-tooltip />
+            <el-table-column label="创建时间" width="160" show-overflow-tooltip>
+              <template #default="scope">
+                {{ [scope.row.createDate, scope.row.createTime].filter(Boolean).join(" ") || "-" }}
+              </template>
+            </el-table-column>
             <el-table-column label="操作" fixed="right" width="240">
               <template #default="scope">
                 <TableActions :actions="getUserActions(scope.row as UserItem)" />

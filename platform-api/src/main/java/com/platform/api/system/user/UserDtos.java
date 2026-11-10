@@ -6,6 +6,7 @@ import com.platform.api.common.query.QueryField;
 import com.platform.api.common.query.QuerySort;
 import com.platform.api.common.query.QuerySortMapping;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,9 +18,9 @@ public final class UserDtos {
     private UserDtos() {
     }
 
-    public record UserItem(String id, String avatar, String createTime, String orgName,
-                           String email, Integer gender, String mobile, String nickname,
-                           String roleNames, Integer status, String username) {
+    public record UserItem(String id, String avatar, String createDate, String createTime,
+                           String orgName, String email, Integer gender, String mobile,
+                           String nickname, String roleNames, Integer status, String username) {
     }
 
     public record UserInfo(String userId, String username, String nickname, String avatar,
@@ -49,9 +50,10 @@ public final class UserDtos {
     @QuerySort(value = {
             @QuerySortMapping(property = "id", column = "u.id"),
             @QuerySortMapping(property = "username", column = "u.username"),
+            @QuerySortMapping(property = "createDate", column = "u.create_date"),
             @QuerySortMapping(property = "createTime", column = "u.create_time"),
-            @QuerySortMapping(property = "updateTime", column = "u.update_time")
-    }, defaultSort = "u.create_time DESC, u.id DESC")
+            @QuerySortMapping(property = "updateDatetime", column = "u.update_datetime")
+    }, defaultSort = "u.create_date DESC, u.create_time DESC, u.id DESC")
     public static class UserQuery extends PageQuery {
 
         @QueryField(value = "u.status")
@@ -60,17 +62,28 @@ public final class UserDtos {
         @QueryField(value = "u.org_id")
         private String orgId;
 
-        /** 由 createTime 区间拆分，GE u.create_time */
-        @QueryField(value = "u.create_time", op = Op.GE)
-        private String createTimeStart;
-
-        /** 由 createTime 区间拆分，LE u.create_time */
-        @QueryField(value = "u.create_time", op = Op.LE)
-        private String createTimeEnd;
-
         private String keywords;
         private List<String> roleIds = new ArrayList<>();
-        private List<String> createTime = new ArrayList<>();
+
+        /** 创建日期区间 [start, end]；查询串重复参数直接绑定为日期数组，由框架生成 BETWEEN 条件 */
+        @QueryField(value = "u.create_date", op = Op.BETWEEN)
+        private LocalDate[] createDate = new LocalDate[0];
+
+        public Integer getStatus() {
+            return status;
+        }
+
+        public void setStatus(Integer status) {
+            this.status = status;
+        }
+
+        public String getOrgId() {
+            return orgId;
+        }
+
+        public void setOrgId(String orgId) {
+            this.orgId = orgId;
+        }
 
         public String getKeywords() {
             return keywords;
@@ -88,35 +101,12 @@ public final class UserDtos {
             this.roleIds = roleIds;
         }
 
-        public List<String> getCreateTime() {
-            return createTime;
+        public LocalDate[] getCreateDate() {
+            return createDate;
         }
 
-        /**
-         * 前端提交日期区间 [start, end]，拆分为含时分秒的 BETWEEN 边界。
-         */
-        public void setCreateTime(List<String> createTime) {
-            this.createTime = createTime;
-            if (createTime != null && !createTime.isEmpty()) {
-                String start = normalizeDate(createTime.get(0));
-                if (start != null) {
-                    this.createTimeStart = start + " 00:00:00";
-                }
-                if (createTime.size() >= 2) {
-                    String end = normalizeDate(createTime.get(1));
-                    if (end != null) {
-                        this.createTimeEnd = end + " 23:59:59";
-                    }
-                }
-            }
-        }
-
-        private String normalizeDate(String value) {
-            if (value == null || value.isBlank()) {
-                return null;
-            }
-            String trimmed = value.trim();
-            return trimmed.length() >= 10 ? trimmed.substring(0, 10) : null;
+        public void setCreateDate(LocalDate[] createDate) {
+            this.createDate = createDate;
         }
     }
 }

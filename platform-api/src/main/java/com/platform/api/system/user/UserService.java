@@ -36,6 +36,7 @@ public class UserService {
     private static final RowMapper<UserDtos.UserItem> USER_ITEM_MAPPER = (rs, rowNum) -> new UserDtos.UserItem(
             String.valueOf(rs.getLong("id")),
             rs.getString("avatar"),
+            rs.getString("create_date"),
             rs.getString("create_time"),
             rs.getString("org_name"),
             rs.getString("email"),
@@ -49,7 +50,8 @@ public class UserService {
     private static final String BASE_SELECT = """
             SELECT u.id AS id,
                    u.avatar AS avatar,
-                   DATE_FORMAT(u.create_time, '%Y-%m-%d %H:%i:%s') AS create_time,
+                   u.create_date AS create_date,
+                   u.create_time AS create_time,
                    o.name AS org_name,
                    u.email AS email,
                    u.gender AS gender,
@@ -199,8 +201,9 @@ public class UserService {
         user.setStatus(form.status() == null ? 1 : form.status());
         user.setOrgId(orgId);
         LocalDateTime now = LocalDateTime.now();
-        user.setCreateTime(now);
-        user.setUpdateTime(now);
+        user.setCreateDate(now.toLocalDate());
+        user.setCreateTime(now.toLocalTime().withNano(0));
+        user.setUpdateDatetime(now);
 
         SysUser saved = userRepository.save(user);
         replaceRoles(saved.getId(), form.roleIds());
@@ -266,7 +269,7 @@ public class UserService {
         existing.setEmail(form.email());
         existing.setStatus(form.status() == null ? existing.getStatus() : form.status());
         existing.setOrgId(orgId);
-        existing.setUpdateTime(LocalDateTime.now());
+        existing.setUpdateDatetime(LocalDateTime.now());
         userRepository.save(existing);
         replaceRoles(id, form.roleIds());
     }
@@ -279,7 +282,7 @@ public class UserService {
         SysUser user = userRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound("用户不存在"));
         user.setStatus(status);
-        user.setUpdateTime(LocalDateTime.now());
+        user.setUpdateDatetime(LocalDateTime.now());
         userRepository.save(user);
     }
 
@@ -291,7 +294,7 @@ public class UserService {
         SysUser user = userRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound("用户不存在"));
         user.setPassword(passwordEncoder.encode(password.trim()));
-        user.setUpdateTime(LocalDateTime.now());
+        user.setUpdateDatetime(LocalDateTime.now());
         userRepository.save(user);
     }
 

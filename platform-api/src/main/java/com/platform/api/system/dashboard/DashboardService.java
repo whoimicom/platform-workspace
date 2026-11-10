@@ -27,9 +27,9 @@ public class DashboardService {
 
     public DashboardDtos.Stats stats(LoginUser loginUser) {
         long userCount = count("SELECT COUNT(*) FROM sys_user", Map.of());
-        long todayNewUsers = count("SELECT COUNT(*) FROM sys_user WHERE DATE(create_time) = CURDATE()", Map.of());
+        long todayNewUsers = count("SELECT COUNT(*) FROM sys_user WHERE create_date = CURDATE()", Map.of());
         long yesterdayNewUsers = count(
-                "SELECT COUNT(*) FROM sys_user WHERE DATE(create_time) = CURDATE() - INTERVAL 1 DAY", Map.of());
+                "SELECT COUNT(*) FROM sys_user WHERE create_date = CURDATE() - INTERVAL 1 DAY", Map.of());
         Double growthRate = yesterdayGrowth(todayNewUsers, yesterdayNewUsers);
         long publishedNotices = count("SELECT COUNT(*) FROM sys_notice WHERE publish_status = 1", Map.of());
         long unread = count("SELECT COUNT(*) FROM sys_notice n "
@@ -53,9 +53,9 @@ public class DashboardService {
         LocalDate start = today.minusDays(effectiveDays - 1L);
 
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT DATE(create_time) AS day, COUNT(*) AS cnt FROM sys_user "
-                        + "WHERE create_time >= :start GROUP BY DATE(create_time)",
-                Map.of("start", start.atStartOfDay()));
+                "SELECT create_date AS day, COUNT(*) AS cnt FROM sys_user "
+                        + "WHERE create_date >= :start GROUP BY create_date",
+                Map.of("start", start));
         Map<String, Long> byDay = new HashMap<>();
         for (Map<String, Object> row : rows) {
             Object day = row.get("day");

@@ -25,7 +25,7 @@ export interface UserInfo {
  */
 export interface UserQuery extends PageQuery {
   /** 用户接口允许的排序属性 */
-  sort?: SortExpression<"id" | "username" | "createTime" | "updateTime">[];
+  sort?: SortExpression<"id" | "username" | "createDate" | "createTime" | "updateDatetime">[];
   /** 角色筛选 */
   roleIds?: (string | number)[];
   /** 搜索关键字 */
@@ -34,8 +34,8 @@ export interface UserQuery extends PageQuery {
   status?: number;
   /** 架构 ID */
   orgId?: string;
-  /** 创建时间 */
-  createTime?: [string, string];
+  /** 创建日期区间 */
+  createDate?: [string, string];
 }
 
 /**
@@ -46,7 +46,9 @@ export interface UserItem {
   id: string;
   /** 用户头像地址 */
   avatar?: string;
-  /** 创建时间 */
+  /** 创建日期（yyyy-MM-dd） */
+  createDate?: string;
+  /** 创建时间（HH:mm:ss） */
   createTime?: string;
   /** 架构名称 */
   orgName?: string;

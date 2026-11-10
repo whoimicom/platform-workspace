@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -290,7 +291,7 @@ public class DynamicQueryExecutor {
     }
 
     /**
-     * 判断字段值是否参与查询：null / 空白串 / 空集合跳过。
+     * 判断字段值是否参与查询：null / 空白串 / 空集合 / 空数组跳过。
      */
     private boolean hasValue(Object value) {
         if (value == null) {
@@ -302,15 +303,28 @@ public class DynamicQueryExecutor {
         if (value instanceof Collection<?> collection) {
             return !collection.isEmpty();
         }
+        if (value.getClass().isArray()) {
+            return Array.getLength(value) > 0;
+        }
         return true;
     }
 
     /**
-     * IN / BETWEEN 的值统一转为列表；逗号分隔字符串自动拆分。
+     * IN / BETWEEN 的值统一转为列表；数组、逗号分隔字符串自动拆分。
      */
     private List<Object> toList(Object value) {
         if (value instanceof Collection<?> collection) {
             return new ArrayList<>(collection);
+        }
+        if (value.getClass().isArray()) {
+            List<Object> values = new ArrayList<>();
+            for (int i = 0; i < Array.getLength(value); i++) {
+                Object item = Array.get(value, i);
+                if (item != null && StringUtils.hasText(item.toString())) {
+                    values.add(item);
+                }
+            }
+            return values;
         }
         List<Object> values = new ArrayList<>();
         for (String part : value.toString().split(",")) {

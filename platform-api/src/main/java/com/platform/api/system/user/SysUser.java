@@ -3,7 +3,9 @@ package com.platform.api.system.user;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Table("sys_user")
 public class SysUser {
@@ -19,8 +21,9 @@ public class SysUser {
     private String email;
     private Integer status;
     private Long orgId;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
+    private LocalDate createDate;
+    private LocalTime createTime;
+    private LocalDateTime updateDatetime;
 
     public Long getId() {
         return id;
@@ -102,19 +105,27 @@ public class SysUser {
         this.orgId = orgId;
     }
 
-    public LocalDateTime getCreateTime() {
+    public LocalDate getCreateDate() {
+        return createDate;
+    }
+
+    public void setCreateDate(LocalDate createDate) {
+        this.createDate = createDate;
+    }
+
+    public LocalTime getCreateTime() {
         return createTime;
     }
 
-    public void setCreateTime(LocalDateTime createTime) {
+    public void setCreateTime(LocalTime createTime) {
         this.createTime = createTime;
     }
 
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
+    public LocalDateTime getUpdateDatetime() {
+        return updateDatetime;
     }
 
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
+    public void setUpdateDatetime(LocalDateTime updateDatetime) {
+        this.updateDatetime = updateDatetime;
     }
 }

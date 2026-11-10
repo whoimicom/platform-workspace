@@ -40,13 +40,14 @@ CREATE TABLE IF NOT EXISTS sys_user (
     mobile      VARCHAR(32)  DEFAULT NULL COMMENT '手机号',
     email       VARCHAR(128) DEFAULT NULL COMMENT '邮箱',
     status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
-    dept_id     BIGINT       DEFAULT NULL COMMENT '部门ID',
-    create_time DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+    org_id      BIGINT       DEFAULT NULL COMMENT '架构ID',
+    create_date DATE         NOT NULL COMMENT '创建日期',
+    create_time TIME         NOT NULL COMMENT '创建时间',
+    update_datetime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_sys_user_username (username),
     UNIQUE KEY uk_sys_user_mobile (mobile),
-    KEY idx_sys_user_dept (dept_id)
+    KEY idx_sys_user_org (org_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '用户表';
 
 -- ------------------------------------------------------------
@@ -335,17 +336,17 @@ INSERT INTO sys_role (id, code, name, sort, status, data_scope, remark, create_t
     (10, 'ADMINISTRATION', '行政', 10, 1, 4, '行政', '2026-09-26 08:10:02', '2026-09-26 08:10:02');
 
 -- 用户（密码 NEED_INIT 会在后端首次启动时替换为 BCrypt 加密的默认密码）
-INSERT INTO sys_user (id, username, password, nickname, avatar, gender, mobile, email, status, dept_id, create_time, update_time) VALUES
-    (1, 'whoimi', 'NEED_INIT', 'whoimi', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 0, NULL, NULL, 1, NULL, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (2, 'admin', 'NEED_INIT', '系统管理员', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18888888888', 'whoimi@163.com', 1, 1, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (3, 'test', 'NEED_INIT', '测试小用户', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345679', 'whoimi@163.com', 1, 3, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (4, 'dept_manager', 'NEED_INIT', '部门主管', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345680', 'manager@whoimi.com', 1, 1, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (5, 'dept_member', 'NEED_INIT', '部门成员', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345681', 'member@whoimi.com', 1, 1, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (6, 'employee', 'NEED_INIT', '普通员工', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345682', 'employee@whoimi.com', 1, 2, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (7, 'custom_user', 'NEED_INIT', '自定义权限用户', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345683', 'custom@whoimi.com', 1, 3, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (8, 'manager', 'NEED_INIT', '总经理', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345684', 'manager@whoimi.com', 1, 1, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (9, 'finance', 'NEED_INIT', '财务专员', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 2, '18812345685', 'finance@whoimi.com', 1, 1, '2026-09-26 08:10:02', '2026-09-26 08:10:02'),
-    (10, 'clerk', 'NEED_INIT', '行政专员', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 2, '18812345686', 'clerk@whoimi.com', 1, 1, '2026-09-26 08:10:02', '2026-09-26 08:10:02');
+INSERT INTO sys_user (id, username, password, nickname, avatar, gender, mobile, email, status, org_id, create_date, create_time, update_datetime) VALUES
+    (1, 'whoimi', 'NEED_INIT', 'whoimi', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 0, NULL, NULL, 1, NULL, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (2, 'admin', 'NEED_INIT', '系统管理员', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18888888888', 'whoimi@163.com', 1, 1, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (3, 'test', 'NEED_INIT', '测试小用户', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345679', 'whoimi@163.com', 1, 3, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (4, 'dept_manager', 'NEED_INIT', '部门主管', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345680', 'manager@whoimi.com', 1, 1, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (5, 'dept_member', 'NEED_INIT', '部门成员', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345681', 'member@whoimi.com', 1, 1, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (6, 'employee', 'NEED_INIT', '普通员工', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345682', 'employee@whoimi.com', 1, 2, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (7, 'custom_user', 'NEED_INIT', '自定义权限用户', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345683', 'custom@whoimi.com', 1, 3, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (8, 'manager', 'NEED_INIT', '总经理', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 1, '18812345684', 'manager@whoimi.com', 1, 1, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (9, 'finance', 'NEED_INIT', '财务专员', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 2, '18812345685', 'finance@whoimi.com', 1, 1, '2026-09-26', '08:10:02', '2026-09-26 08:10:02'),
+    (10, 'clerk', 'NEED_INIT', '行政专员', 'https://foruda.gitee.com/images/1723603502796844527/03cdca2a_716974.gif', 2, '18812345686', 'clerk@whoimi.com', 1, 1, '2026-09-26', '08:10:02', '2026-09-26 08:10:02');
 
 -- 用户角色关联
 INSERT INTO sys_user_role (user_id, role_id) VALUES
