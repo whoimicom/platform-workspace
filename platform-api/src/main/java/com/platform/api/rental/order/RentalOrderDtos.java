@@ -7,6 +7,7 @@ import com.platform.api.common.query.QuerySort;
 import com.platform.api.common.query.QuerySortMapping;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 与前端 src/api/rental/order/types.ts 对应的数据结构。
@@ -102,11 +103,9 @@ public final class RentalOrderDtos {
         @QueryField(value = "m.mobile", op = Op.LIKE)
         private String mobile;
 
-        @QueryField(value = "z.create_time", op = Op.GE)
-        private String createTimeStart;
-
-        @QueryField(value = "z.create_time", op = Op.LE)
-        private String createTimeEnd;
+        /** 创建时间区间 [start, end] */
+        @QueryField(value = "z.create_time", op = Op.BETWEEN)
+        private LocalDateTime[] createTime;
 
         public String getKeywords() {
             return keywords;
@@ -204,20 +203,12 @@ public final class RentalOrderDtos {
             this.mobile = mobile;
         }
 
-        public String getCreateTimeStart() {
-            return createTimeStart;
+        public LocalDateTime[] getCreateTime() {
+            return createTime;
         }
 
-        public void setCreateTimeStart(String createTimeStart) {
-            this.createTimeStart = createTimeStart;
-        }
-
-        public String getCreateTimeEnd() {
-            return createTimeEnd;
-        }
-
-        public void setCreateTimeEnd(String createTimeEnd) {
-            this.createTimeEnd = createTimeEnd;
+        public void setCreateTime(LocalDateTime[] createTime) {
+            this.createTime = createTime;
         }
     }
 }

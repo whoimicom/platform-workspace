@@ -426,11 +426,16 @@ public class CodeGenerator {
             sb.append("  // 未配置查询条件\n");
         }
         for (Col column : ctx.filterColumns) {
-            sb.append("  /** ").append(column.comment()).append(" */\n")
-                    .append("  ").append(column.apiProp()).append("?: string;\n");
+            sb.append("  /** ").append(column.comment()).append(" */\n");
             if ("BETWEEN".equals(column.filterType())) {
-                sb.append("  ").append(column.apiProp()).append("Start?: string;\n")
-                        .append("  ").append(column.apiProp()).append("End?: string;\n");
+                if (column.dateType()) {
+                    sb.append("  ").append(column.apiProp()).append("?: [string, string];\n");
+                } else {
+                    sb.append("  ").append(column.apiProp()).append("Start?: string;\n")
+                            .append("  ").append(column.apiProp()).append("End?: string;\n");
+                }
+            } else {
+                sb.append("  ").append(column.apiProp()).append("?: string;\n");
             }
         }
         sb.append("}\n\n")
@@ -510,8 +515,8 @@ public class CodeGenerator {
 
     private String frontendView(Ctx ctx) {
         String apiName = ctx.className + "API";
-        List<Col> betweenColumns = ctx.filterColumns.stream()
-                .filter(column -> "BETWEEN".equals(column.filterType())).toList();
+        List<Col> rangeColumns = ctx.filterColumns.stream()
+                .filter(column -> "BETWEEN".equals(column.filterType()) && !column.dateType()).toList();
         boolean hasDate = ctx.itemColumns.stream().anyMatch(Col::dateType);
         String pkProp = ctx.mainPk.propertyName();
         String pkTsType = tsType(ctx.mainPk.javaType());
@@ -619,17 +624,17 @@ public class CodeGenerator {
         if (hasDate) {
             sb.append("const formatDateTime = (value?: string) => (value ? value.replace(\"T\", \" \") : \"\");\n\n");
         }
-        if (!betweenColumns.isEmpty()) {
+        if (!rangeColumns.isEmpty()) {
             sb.append("const buildQuery = (query: ").append(ctx.className).append("Query) => ({\n")
                     .append("  ...query,\n");
-            for (Col column : betweenColumns) {
+            for (Col column : rangeColumns) {
                 sb.append("  ").append(column.apiProp()).append(": [query.").append(column.apiProp())
                         .append("Start, query.").append(column.apiProp()).append("End]")
-                        .append(".filter(Boolean).join(\",\"),\n");
+                        .append(".filter((value) => value !== undefined && value !== \"\"),\n");
             }
             sb.append("});\n\n");
         }
-        String request = betweenColumns.isEmpty()
+        String request = rangeColumns.isEmpty()
                 ? apiName + ".getPage"
                 : "(query: " + ctx.className + "Query) => " + apiName + ".getPage(buildQuery(query))";
         sb.append("const queryFormRef = ref<FormInstance>();\n\n")
@@ -779,26 +784,20 @@ public class CodeGenerator {
                 label = label + "（" + column.tableName() + "）";
             }
             if ("BETWEEN".equals(column.filterType())) {
-                String type = "LocalDate".equals(column.javaType()) ? "date" : "datetime";
-                String format = "LocalDate".equals(column.javaType()) ? "YYYY-MM-DD" : "YYYY-MM-DD HH:mm:ss";
                 if (column.dateType()) {
+                    boolean localDate = "LocalDate".equals(column.javaType());
                     sb.append("        <el-form-item label=\"").append(label).append("\" prop=\"").append(prop)
-                            .append("Start\">\n")
+                            .append("\">\n")
                             .append("          <el-date-picker\n")
-                            .append("            v-model=\"params.").append(prop).append("Start\"\n")
-                            .append("            type=\"").append(type).append("\"\n")
-                            .append("            value-format=\"").append(format).append("\"\n")
-                            .append("            placeholder=\"开始时间\"\n")
-                            .append("            style=\"width: 180px\"\n")
-                            .append("          />\n")
-                            .append("        </el-form-item>\n")
-                            .append("        <el-form-item label=\"至\" prop=\"").append(prop).append("End\">\n")
-                            .append("          <el-date-picker\n")
-                            .append("            v-model=\"params.").append(prop).append("End\"\n")
-                            .append("            type=\"").append(type).append("\"\n")
-                            .append("            value-format=\"").append(format).append("\"\n")
-                            .append("            placeholder=\"结束时间\"\n")
-                            .append("            style=\"width: 180px\"\n")
+                            .append("            v-model=\"params.").append(prop).append("\"\n")
+                            .append("            type=\"").append(localDate ? "daterange" : "datetimerange")
+                            .append("\"\n")
+                            .append("            value-format=\"")
+                            .append(localDate ? "YYYY-MM-DD" : "YYYY-MM-DD[T]HH:mm:ss").append("\"\n")
+                            .append("            range-separator=\"~\"\n")
+                            .append("            start-placeholder=\"开始时间\"\n")
+                            .append("            end-placeholder=\"结束时间\"\n")
+                            .append("            style=\"width: 260px\"\n")
                             .append("          />\n")
                             .append("        </el-form-item>\n");
                 } else {
@@ -851,8 +850,11 @@ public class CodeGenerator {
         StringBuilder sb = new StringBuilder();
         for (Col column : ctx.filterColumns) {
             if ("BETWEEN".equals(column.filterType())) {
-                sb.append("    ").append(column.apiProp()).append("Start: \"\",\n")
-                        .append("    ").append(column.apiProp()).append("End: \"\",\n");
+                // 日期区间由单个 range 选择器绑定，初始为空即可
+                if (!column.dateType()) {
+                    sb.append("    ").append(column.apiProp()).append("Start: \"\",\n")
+                            .append("    ").append(column.apiProp()).append("End: \"\",\n");
+                }
             } else {
                 sb.append("    ").append(column.apiProp()).append(": \"\",\n");
             }
@@ -919,10 +921,11 @@ public class CodeGenerator {
         }
     }
 
-    /** 区间、集合、模糊匹配在查询对象里统一用字符串接收，其余按字段实际类型 */
+    /** 区间、集合、模糊匹配在查询对象里统一用字符串接收；区间按字段类型生成日期/数值数组 */
     private static String queryFieldType(Col column) {
         return switch (column.filterType()) {
-            case "LIKE", "LIKE_LEFT", "LIKE_RIGHT", "IN", "NOT_IN", "BETWEEN" -> "String";
+            case "LIKE", "LIKE_LEFT", "LIKE_RIGHT", "IN", "NOT_IN" -> "String";
+            case "BETWEEN" -> column.javaType() + "[]";
             default -> column.javaType();
         };
     }

@@ -33,22 +33,15 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="创建时间" prop="createTimeStart">
+        <el-form-item label="创建时间" prop="createTime">
           <el-date-picker
-            v-model="params.createTimeStart"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="开始时间"
-            style="width: 180px"
-          />
-        </el-form-item>
-        <el-form-item label="至" prop="createTimeEnd">
-          <el-date-picker
-            v-model="params.createTimeEnd"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="结束时间"
-            style="width: 180px"
+            v-model="params.createTime"
+            type="datetimerange"
+            value-format="YYYY-MM-DD[T]HH:mm:ss"
+            range-separator="~"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            style="width: 360px"
           />
         </el-form-item>
         <el-form-item>
@@ -180,8 +173,7 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
     orderId: "",
     status: "",
     tenant: "",
-    createTimeStart: "",
-    createTimeEnd: "",
+    createTime: undefined,
   },
   request: SuperviseLockAPI.getPage,
   onBeforeReset: () => queryFormRef.value?.resetFields(),

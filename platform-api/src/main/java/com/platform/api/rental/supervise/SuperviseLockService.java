@@ -11,7 +11,6 @@ import org.springframework.data.relational.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,13 +77,9 @@ public class SuperviseLockService {
                     .or("model").like(keyword);
             criteria = criteria.and(keywordCriteria);
         }
-        LocalDateTime start = toDateTime(query.getCreateTimeStart());
-        if (start != null) {
-            criteria = criteria.and("create_time").greaterThanOrEquals(start);
-        }
-        LocalDateTime end = toDateTime(query.getCreateTimeEnd());
-        if (end != null) {
-            criteria = criteria.and("create_time").lessThanOrEquals(end);
+        LocalDateTime[] createTime = query.getCreateTime();
+        if (createTime != null && createTime.length == 2 && createTime[0] != null && createTime[1] != null) {
+            criteria = criteria.and("create_time").between(createTime[0], createTime[1]);
         }
 
         Sort sort = resolveSort(query.getSort());
@@ -116,16 +111,5 @@ public class SuperviseLockService {
             }
         }
         return orders.isEmpty() ? Sort.by(Sort.Order.desc("id")) : Sort.by(orders);
-    }
-
-    /**
-     * 兼容 "yyyy-MM-dd HH:mm:ss" 与 ISO 两种入参格式。
-     */
-    private static LocalDateTime toDateTime(String text) {
-        if (!StringUtils.hasText(text)) {
-            return null;
-        }
-        String value = text.trim().replace(' ', 'T');
-        return value.length() <= 10 ? LocalDate.parse(value).atStartOfDay() : LocalDateTime.parse(value);
     }
 }

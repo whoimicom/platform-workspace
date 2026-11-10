@@ -18,10 +18,8 @@ export interface SuperviseLockQuery extends PageQuery {
   brandId?: string;
   /** 系统类型 IOS / ANDROID */
   sysType?: string;
-  /** 创建时间起 */
-  createTimeStart?: string;
-  /** 创建时间止 */
-  createTimeEnd?: string;
+  /** 创建时间区间 */
+  createTime?: [string, string];
 }
 
 /**

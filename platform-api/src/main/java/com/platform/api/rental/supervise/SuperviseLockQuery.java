@@ -2,6 +2,8 @@ package com.platform.api.rental.supervise;
 
 import com.platform.api.common.query.PageQuery;
 
+import java.time.LocalDateTime;
+
 /**
  * 设备锁查询参数：只负责接收前端条件，条件到 {@code Criteria} 的转换在 Service 中完成。
  */
@@ -19,8 +21,8 @@ public class SuperviseLockQuery extends PageQuery {
     private String tenant;
     private String brandId;
     private String sysType;
-    private String createTimeStart;
-    private String createTimeEnd;
+    /** 创建时间区间 [start, end] */
+    private LocalDateTime[] createTime;
 
     public String getKeywords() {
         return keywords;
@@ -102,19 +104,11 @@ public class SuperviseLockQuery extends PageQuery {
         this.sysType = sysType;
     }
 
-    public String getCreateTimeStart() {
-        return createTimeStart;
+    public LocalDateTime[] getCreateTime() {
+        return createTime;
     }
 
-    public void setCreateTimeStart(String createTimeStart) {
-        this.createTimeStart = createTimeStart;
-    }
-
-    public String getCreateTimeEnd() {
-        return createTimeEnd;
-    }
-
-    public void setCreateTimeEnd(String createTimeEnd) {
-        this.createTimeEnd = createTimeEnd;
+    public void setCreateTime(LocalDateTime[] createTime) {
+        this.createTime = createTime;
     }
 }
