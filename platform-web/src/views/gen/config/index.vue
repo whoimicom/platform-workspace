@@ -157,119 +157,119 @@
         <el-collapse-item title="配置信息" name="config">
           <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
             <el-row :gutter="16">
-          <el-col :span="6">
-            <el-form-item label="配置名称" prop="configName">
-              <el-input v-model="form.configName" placeholder="默认与主表同名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="功能名" prop="functionName">
-              <el-input v-model="form.functionName" placeholder="页面标题" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="模块名" prop="moduleName">
-              <el-input v-model="form.moduleName" placeholder="如 rental" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="业务名" prop="businessName">
-              <el-input v-model="form.businessName" placeholder="camelCase，如 superviseLock" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="类名" prop="className">
-              <el-input v-model="form.className" placeholder="PascalCase，如 SuperviseLock" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="前端路径" prop="frontendPath">
-              <el-input v-model="form.frontendPath" placeholder="如 rental/superviseLock" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="权限前缀" prop="permPrefix">
-              <el-input v-model="form.permPrefix" placeholder="如 rental:superviseLock:list" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="生成风格" prop="genStyle">
-              <el-select v-model="form.genStyle" style="width: 100%">
-                <el-option label="动态 SQL（不生成实体）" value="dynamic-sql" />
-                <el-option label="Data JDBC 原生（生成实体关联）" value="data-jdbc" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="根包名" prop="packageName">
-              <el-input v-model="form.packageName" placeholder="com.platform.api" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="作者" prop="author">
-              <el-input v-model="form.author" />
-            </el-form-item>
-          </el-col>
+              <el-col :span="6">
+                <el-form-item label="配置名称" prop="configName">
+                  <el-input v-model="form.configName" placeholder="默认与主表同名" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="功能名" prop="functionName">
+                  <el-input v-model="form.functionName" placeholder="页面标题" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="模块名" prop="moduleName">
+                  <el-input v-model="form.moduleName" placeholder="如 rental" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="业务名" prop="businessName">
+                  <el-input v-model="form.businessName" placeholder="camelCase，如 superviseLock" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="类名" prop="className">
+                  <el-input v-model="form.className" placeholder="PascalCase，如 SuperviseLock" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="前端路径" prop="frontendPath">
+                  <el-input v-model="form.frontendPath" placeholder="如 rental/superviseLock" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="权限前缀" prop="permPrefix">
+                  <el-input v-model="form.permPrefix" placeholder="如 rental:superviseLock:list" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="生成风格" prop="genStyle">
+                  <el-select v-model="form.genStyle" style="width: 100%">
+                    <el-option label="动态 SQL（不生成实体）" value="dynamic-sql" />
+                    <el-option label="Data JDBC 原生（生成实体关联）" value="data-jdbc" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="根包名" prop="packageName">
+                  <el-input v-model="form.packageName" placeholder="com.platform.api" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="作者" prop="author">
+                  <el-input v-model="form.author" />
+                </el-form-item>
+              </el-col>
             </el-row>
           </el-form>
         </el-collapse-item>
         <el-collapse-item title="关联表（主表列 = 从表列）" name="tables">
           <el-table :data="tables" border size="small">
-        <el-table-column label="表名" prop="tableName" min-width="160" />
-        <el-table-column label="表注释" prop="tableComment" min-width="140" />
-        <el-table-column label="关联方式" width="170">
-          <template #default="scope">
-            <el-select
-              v-model="scope.row.relationType"
-              size="small"
-              :disabled="scope.row.tableName === mainTableName"
-              style="width: 100%"
-            >
-              <el-option label="主表" value="MAIN" />
-              <el-option label="一对多 ONE_TO_MANY" value="ONE_TO_MANY" />
-              <el-option label="一对一 ONE_TO_ONE" value="ONE_TO_ONE" />
-              <el-option label="多对一 MANY_TO_ONE" value="MANY_TO_ONE" />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column label="主表字段" width="170">
-          <template #default="scope">
-            <el-select
-              v-model="scope.row.mainColumn"
-              size="small"
-              filterable
-              clearable
-              :disabled="scope.row.tableName === mainTableName"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="column in mainColumns"
-                :key="column.columnName"
-                :label="column.columnName"
-                :value="column.columnName"
-              />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column label="关联表字段" width="170">
-          <template #default="scope">
-            <el-select
-              v-model="scope.row.joinColumn"
-              size="small"
-              filterable
-              clearable
-              :disabled="scope.row.tableName === mainTableName"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="column in tableColumnsOf(scope.row.tableName)"
-                :key="column.columnName"
-                :label="column.columnName"
-                :value="column.columnName"
-              />
-            </el-select>
-          </template>
-        </el-table-column>
+            <el-table-column label="表名" prop="tableName" min-width="160" />
+            <el-table-column label="表注释" prop="tableComment" min-width="140" />
+            <el-table-column label="关联方式" width="170">
+              <template #default="scope">
+                <el-select
+                  v-model="scope.row.relationType"
+                  size="small"
+                  :disabled="scope.row.tableName === mainTableName"
+                  style="width: 100%"
+                >
+                  <el-option label="主表" value="MAIN" />
+                  <el-option label="一对多 ONE_TO_MANY" value="ONE_TO_MANY" />
+                  <el-option label="一对一 ONE_TO_ONE" value="ONE_TO_ONE" />
+                  <el-option label="多对一 MANY_TO_ONE" value="MANY_TO_ONE" />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="主表字段" width="170">
+              <template #default="scope">
+                <el-select
+                  v-model="scope.row.mainColumn"
+                  size="small"
+                  filterable
+                  clearable
+                  :disabled="scope.row.tableName === mainTableName"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="column in mainColumns"
+                    :key="column.columnName"
+                    :label="column.columnName"
+                    :value="column.columnName"
+                  />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="关联表字段" width="170">
+              <template #default="scope">
+                <el-select
+                  v-model="scope.row.joinColumn"
+                  size="small"
+                  filterable
+                  clearable
+                  :disabled="scope.row.tableName === mainTableName"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="column in tableColumnsOf(scope.row.tableName)"
+                    :key="column.columnName"
+                    :label="column.columnName"
+                    :value="column.columnName"
+                  />
+                </el-select>
+              </template>
+            </el-table-column>
           </el-table>
         </el-collapse-item>
       </el-collapse>
@@ -695,6 +695,15 @@ onMounted(() => {
   margin-bottom: 8px;
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+
+.gen-collapse {
+  border-top: none;
+  border-bottom: none;
+}
+
+.gen-collapse :deep(.el-collapse-item__content) {
+  padding-bottom: 8px;
 }
 
 .gen-pair {

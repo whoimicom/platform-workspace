@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -199,7 +200,12 @@ public class GenService {
         List<GenDtos.GenColumnItem> columns = jdbc.query(COLUMN_SELECT, Map.of("configId", id),
                 RecordRowMapper.of(GenDtos.GenColumnItem.class));
         // 读取时按当前库结构过滤，表/字段已删除或重命名的旧配置直接忽略，不影响打开与预览
-        ValidateResult valid = filterBySchema(row.mainTable(), tables, columns);
+        // 主表固定排第一，其余按配置顺序
+        List<GenDtos.GenTableItem> ordered = tables.stream()
+                .sorted(Comparator.comparing((GenDtos.GenTableItem table) -> !table.tableName().equals(row.mainTable()))
+                        .thenComparingInt(GenDtos.GenTableItem::sort))
+                .toList();
+        ValidateResult valid = filterBySchema(row.mainTable(), ordered, columns);
         return new GenDtos.GenConfigDetail(
                 toItem(row, tableLists.getOrDefault(id, row.mainTable())), valid.tables(), valid.columns());
     }
