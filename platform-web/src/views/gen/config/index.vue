@@ -671,30 +671,30 @@ onMounted(() => {
 <style scoped>
 .gen-toolbar {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
   margin-bottom: 12px;
 }
 
 .gen-toolbar--footer {
-  margin-top: 12px;
   justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .gen-selection {
-  color: var(--el-text-color-secondary);
   font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 
 .gen-table-list {
-  color: var(--el-text-color-regular);
   font-size: 12px;
+  color: var(--el-text-color-regular);
 }
 
 .gen-preview-path {
   margin-bottom: 8px;
-  color: var(--el-text-color-secondary);
   font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .gen-collapse {
@@ -708,42 +708,42 @@ onMounted(() => {
 
 .gen-pair {
   display: flex;
+  gap: 6px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
 }
 
 .gen-pair-left {
   flex: 1;
   overflow: hidden;
-  text-align: right;
   text-overflow: ellipsis;
+  text-align: right;
   white-space: nowrap;
 }
 
 .gen-pair-sep {
-  color: var(--el-text-color-placeholder);
   flex-shrink: 0;
+  color: var(--el-text-color-placeholder);
 }
 
 .gen-pair-right {
   flex: 1;
   overflow: hidden;
-  text-align: left;
   text-overflow: ellipsis;
+  text-align: left;
   white-space: nowrap;
 }
 
 .gen-preview-code {
-  margin: 0;
   max-height: 62vh;
-  overflow: auto;
   padding: 12px;
-  border-radius: 4px;
-  background: var(--el-fill-color-light);
+  margin: 0;
+  overflow: auto;
   font-family: Consolas, Monaco, monospace;
   font-size: 12px;
   line-height: 1.6;
   white-space: pre;
+  background: var(--el-fill-color-light);
+  border-radius: 4px;
 }
 </style>

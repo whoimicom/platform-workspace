@@ -133,7 +133,8 @@
             <el-radio value="STATIC">静态（前端源码内置）</el-radio>
           </el-radio-group>
           <div v-if="formData.type === 'STATIC'" class="el-form-item__tips text-12px mt-1">
-            静态字典在前端 src/constants/dicts.ts 中定义，后端仅存元数据，字典项不可通过管理平台修改。
+            静态字典在前端 src/constants/dicts.ts
+            中定义，后端仅存元数据，字典项不可通过管理平台修改。
           </div>
         </el-form-item>
 
@@ -373,9 +374,9 @@ onMounted(() => {
   &__tag {
     flex-shrink: 0;
     height: 18px;
-    line-height: 16px;
     padding: 0 5px;
     font-size: 11px;
+    line-height: 16px;
   }
 
   &__list {
@@ -391,7 +392,9 @@ onMounted(() => {
     margin-bottom: 2px;
     cursor: pointer;
     border-radius: 6px;
-    transition: background-color 0.15s, box-shadow 0.15s;
+    transition:
+      background-color 0.15s,
+      box-shadow 0.15s;
 
     &:hover {
       background-color: var(--el-fill-color-light);
@@ -406,8 +409,8 @@ onMounted(() => {
   &__info {
     display: flex;
     flex: 1 1 auto;
-    align-items: center;
     gap: 6px;
+    align-items: center;
     min-width: 0;
     line-height: 1.4;
   }
@@ -423,18 +426,18 @@ onMounted(() => {
 
   &__sep {
     flex-shrink: 0;
-    color: var(--el-text-color-placeholder);
     font-size: 12px;
     line-height: 1;
+    color: var(--el-text-color-placeholder);
   }
 
   &__code {
     flex-shrink: 1;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-size: 11px;
     color: var(--el-text-color-secondary);
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     white-space: nowrap;
   }
 

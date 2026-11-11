@@ -22,7 +22,11 @@
           class="flex-1 min-w-0"
         />
         <template v-else>
-          <el-button v-hasPerm="['sys:dict-item:create']" type="primary" @click="handleCreateClick()">
+          <el-button
+            v-hasPerm="['sys:dict-item:create']"
+            type="primary"
+            @click="handleCreateClick()"
+          >
             新增
           </el-button>
           <el-button
@@ -411,8 +415,8 @@ onMounted(() => {
 }
 
 .dict-item-panel__desc {
-  font-size: 12px;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
   color: var(--el-text-color-secondary);
 }
 

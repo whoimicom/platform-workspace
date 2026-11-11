@@ -150,8 +150,8 @@ function handleSettingsClick() {
     padding: 0 6px;
     color: var(--layout-toolbar-color);
     text-align: center;
-    cursor: pointer;
     text-decoration: none;
+    cursor: pointer;
     border-radius: 6px;
     transition:
       background-color 0.16s,

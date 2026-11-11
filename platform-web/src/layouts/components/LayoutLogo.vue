@@ -1,14 +1,13 @@
 <template>
   <div class="layout-logo">
-    <!-- transition 包裹 router-link 的 key 会触发 enter 动画，但 transition 没有 appear 属性，
-         导致 Layout 首次挂载（addRoute + replace 场景）时动画状态不确定，Logo 卡在 translate 起点位置。
-         改为无 transition，直接渲染，避免与 sidebar 初始状态竞争。 -->
-    <router-link :key="+collapse" class="wh-full flex-center" to="/">
-      <img :src="logo" alt="logo" width="20" height="20" class="layout-logo__img" />
-      <span v-if="!collapse" class="layout-logo__title">
-        {{ appConfig.title }}
-      </span>
-    </router-link>
+    <transition appear enter-active-class="logo-fade-enter-active">
+      <router-link :key="+collapse" class="wh-full flex-center" to="/">
+        <img :src="logo" alt="logo" width="20" height="20" class="layout-logo__img" />
+        <span v-if="!collapse" class="layout-logo__title">
+          {{ appConfig.title }}
+        </span>
+      </router-link>
+    </transition>
   </div>
 </template>
 

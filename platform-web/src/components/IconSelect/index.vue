@@ -87,20 +87,11 @@ import { elementIconNames, svgIconNames } from "@/utils/icon";
  * 图标选择器：内置图标库检索与选择
  */
 const props = defineProps({
-  modelValue: {
-    type: String,
-    default: "",
-  },
   width: {
     type: String,
     default: "500px",
   },
 });
-
-/**
- * 选中图标时回传图标名
- */
-const emit = defineEmits(["update:modelValue"]);
 
 const iconSelectRef = ref();
 const popoverContentRef = ref();
@@ -109,9 +100,7 @@ const activeTab = ref("svg");
 
 const svgIcons = ref<string[]>(svgIconNames);
 const elementIcons = ref<string[]>(elementIconNames);
-const selectedIcon = defineModel("modelValue", {
-  type: String,
-  required: true,
+const selectedIcon = defineModel<string>("modelValue", {
   default: "",
 });
 
@@ -152,7 +141,7 @@ function filterIcons() {
  */
 function selectIcon(icon: string) {
   const iconName = activeTab.value === "element" ? "el-icon-" + icon : icon;
-  emit("update:modelValue", iconName);
+  selectedIcon.value = iconName;
   popoverVisible.value = false;
 }
 
